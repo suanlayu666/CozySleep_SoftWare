@@ -4,24 +4,36 @@ Dorm environment monitor - backend service.
 Reads STM32 USART JSON frames, exposes REST APIs for the browser dashboard,
 and provides local/AI analysis with safe fallbacks.
 """
-
-from collections import deque
-from datetime import datetime
 import json
 import os
 import threading
 import time
+from datetime import datetime
 
 import requests
-import serial
-try:
-    from serial.tools import list_ports
-except Exception:  # pragma: no cover - pyserial may be partially installed.
-    list_ports = None
-
 from dotenv import load_dotenv
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+
+from backend.config import (
+    SERIAL_PORT, BAUD_RATE, DEVICE_TIMEOUT, APP_PORT,
+    MOCK_SERIAL, AI_API_BASE, AI_API_KEY, AI_MODEL,
+    COMPANION_AI_INTERVAL,
+)
+from backend.state import (
+    state_lock, history_lock, log_lock, conversation_lock,
+    latest_data, latest_raw_values, last_raw_line,
+    last_update, last_complete_update,
+    latest_frame_complete, latest_frame_errors, latest_missing_fields,
+    history, raw_log, stats, serial_state,
+    DEFAULT_DATA, REQUIRED_FIELDS,
+    conversation_history, companion_cache,
+)
+from backend.quality import build_quality
+from backend.serial_io import (
+    process_frame, serial_reader, mock_reader,
+    append_log, set_serial_state, is_online, now_str,
+)
 
 load_dotenv()
 
@@ -30,434 +42,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder="assets", static_url_path="/assets")
 CORS(app)
 
-# ==================== Config ====================
-SERIAL_PORT = os.getenv("SERIAL_PORT", "COM3")
-BAUD_RATE = int(os.getenv("BAUD_RATE", "115200"))
-DEVICE_TIMEOUT = int(os.getenv("DEVICE_TIMEOUT", "10"))
-APP_PORT = int(os.getenv("APP_PORT", "5000"))
-HISTORY_MAX = int(os.getenv("HISTORY_MAX", "120"))
-RAW_LOG_MAX = int(os.getenv("RAW_LOG_MAX", "80"))
-MOCK_SERIAL = os.getenv("MOCK_SERIAL", "false").strip().lower() in {"1", "true", "yes", "on"}
 
-# OpenAI-compatible API. Leave key empty to use local rules only.
-AI_API_BASE = os.getenv("AI_API_BASE", "")
-AI_API_KEY = os.getenv("AI_API_KEY", "")
-AI_MODEL = os.getenv("AI_MODEL", "deepseek-chat")
-
-
-# ==================== Sensor protocol ====================
-FIELD_ALIASES = {
-    "temperature": ("temp", "temperature"),
-    "humidity": ("humi", "humidity"),
-    "mq135_adc": ("mq135_adc", "air_adc"),
-    "mq135_mv": ("mq135_mv", "air_mv"),
-    "motion": ("motion", "pir"),
-    "sound_db": ("sound_db", "db", "decibel"),
-}
-
-REQUIRED_FIELDS = tuple(FIELD_ALIASES.keys())
-
-FIELD_RANGES = {
-    "temperature": (-20, 80),
-    "humidity": (0, 100),
-    "mq135_adc": (0, 4095),
-    "mq135_mv": (0, 3600),
-    "motion": (0, 1),
-    "sound_db": (0, 130),
-}
-
-DEFAULT_DATA = {
-    "temperature": None,
-    "humidity": None,
-    "mq135_adc": None,
-    "mq135_mv": None,
-    "motion": None,
-    "sound_db": None,
-}
-
-
-# ==================== Shared state ====================
-state_lock = threading.Lock()
-history_lock = threading.Lock()
-log_lock = threading.Lock()
-
-latest_data = dict(DEFAULT_DATA)
-latest_raw_values = {}
-last_raw_line = ""
-last_update = 0.0
-last_complete_update = 0.0
-latest_frame_complete = False
-latest_frame_errors = []
-latest_missing_fields = list(REQUIRED_FIELDS)
-
-history = deque(maxlen=HISTORY_MAX)
-raw_log = deque(maxlen=RAW_LOG_MAX)
-
-stats = {
-    "received_frames": 0,
-    "parsed_frames": 0,
-    "complete_frames": 0,
-    "partial_frames": 0,
-    "parse_failed_frames": 0,
-    "sensor_error_frames": 0,
-    "serial_errors": 0,
-    "serial_reconnects": 0,
-}
-
-serial_state = {
-    "port": SERIAL_PORT,
-    "baud_rate": BAUD_RATE,
-    "connected": False,
-    "last_error": "",
-    "last_open_time": None,
-}
-
-ser = None
-
-
-# ==================== Helpers ====================
-def now_str():
-    return datetime.now().strftime("%H:%M:%S")
-
-
-def append_log(level, raw="", message="", parsed=None):
-    entry = {
-        "time": now_str(),
-        "level": level,
-        "raw": raw,
-        "message": message,
-    }
-    if parsed is not None:
-        entry["complete"] = parsed.get("complete", False)
-        entry["errors"] = parsed.get("errors", [])
-        entry["missing_fields"] = parsed.get("missing_fields", [])
-    with log_lock:
-        raw_log.append(entry)
-
-
-def set_serial_state(**updates):
-    with state_lock:
-        serial_state.update(updates)
-
-
-def is_online():
-    with state_lock:
-        ts = last_update
-    return bool(ts and (time.time() - ts) < DEVICE_TIMEOUT)
-
-
-def _pick_value(obj, aliases):
-    for key in aliases:
-        if key in obj:
-            return obj[key], key
-    return None, None
-
-
-def _coerce_field(field, value):
-    if value is None or value == "":
-        raise ValueError("empty value")
-
-    if field == "motion":
-        coerced = int(float(value))
-        if coerced not in (0, 1):
-            raise ValueError("motion must be 0 or 1")
-        return coerced
-
-    coerced = float(value)
-    if coerced.is_integer():
-        coerced = int(coerced)
-    return coerced
-
-
-def _validate_range(field, value):
-    lo, hi = FIELD_RANGES[field]
-    if value < lo or value > hi:
-        raise ValueError(f"{field} out of range [{lo}, {hi}]")
-
-
-def _parse_json_frame(line):
-    obj = json.loads(line)
-    if not isinstance(obj, dict):
-        raise ValueError("JSON frame must be an object")
-
-    data_update = {}
-    raw_values = {}
-    invalid_fields = []
-    sensor_errors = []
-
-    error_value = obj.get("error")
-    if error_value:
-        sensor_errors.append(str(error_value))
-
-    for field, aliases in FIELD_ALIASES.items():
-        raw, source_key = _pick_value(obj, aliases)
-        if source_key is None:
-            continue
-
-        raw_values[field] = raw
-        try:
-            value = _coerce_field(field, raw)
-            _validate_range(field, value)
-            data_update[field] = value
-        except (TypeError, ValueError) as exc:
-            invalid_fields.append({"field": field, "value": raw, "error": str(exc)})
-
-    missing_fields = [field for field in REQUIRED_FIELDS if field not in data_update]
-    errors = list(sensor_errors)
-    if invalid_fields:
-        errors.extend([f"{item['field']}: {item['error']}" for item in invalid_fields])
-
-    complete = not errors and not missing_fields
-    ok = bool(data_update) and not invalid_fields
-
-    return {
-        "ok": ok,
-        "source": "json",
-        "complete": complete,
-        "data_update": data_update,
-        "raw_values": raw_values,
-        "sensor_errors": sensor_errors,
-        "invalid_fields": invalid_fields,
-        "missing_fields": missing_fields,
-        "errors": errors,
-    }
-
-
-def _parse_csv_frame(line):
-    parts = [part.strip() for part in line.split(",") if part.strip()]
-    if parts and parts[0].upper().startswith("ENV"):
-        parts = parts[1:]
-    if len(parts) < 6:
-        raise ValueError("CSV frame must have 6 sensor values")
-
-    # Fallback order for a compact STM32 frame:
-    # temp,humi,mq135_adc,mq135_mv,motion,sound_db
-    fields = ("temperature", "humidity", "mq135_adc", "mq135_mv", "motion", "sound_db")
-    data_update = {}
-    invalid_fields = []
-    for field, raw in zip(fields, parts):
-        try:
-            value = _coerce_field(field, raw)
-            _validate_range(field, value)
-            data_update[field] = value
-        except (TypeError, ValueError) as exc:
-            invalid_fields.append({"field": field, "value": raw, "error": str(exc)})
-
-    missing_fields = [field for field in REQUIRED_FIELDS if field not in data_update]
-    errors = [f"{item['field']}: {item['error']}" for item in invalid_fields]
-    return {
-        "ok": bool(data_update) and not invalid_fields,
-        "source": "csv",
-        "complete": not errors and not missing_fields,
-        "data_update": data_update,
-        "raw_values": dict(zip(fields, parts)),
-        "sensor_errors": [],
-        "invalid_fields": invalid_fields,
-        "missing_fields": missing_fields,
-        "errors": errors,
-    }
-
-
-def parse_line(line):
-    """Parse one STM32 line into a structured frame result."""
-    text = line.strip()
-    if not text:
-        return {"ok": False, "complete": False, "errors": ["empty line"]}
-
-    try:
-        return _parse_json_frame(text)
-    except json.JSONDecodeError:
-        try:
-            return _parse_csv_frame(text)
-        except ValueError as exc:
-            return {
-                "ok": False,
-                "complete": False,
-                "data_update": {},
-                "raw_values": {},
-                "sensor_errors": [],
-                "invalid_fields": [],
-                "missing_fields": list(REQUIRED_FIELDS),
-                "errors": [f"parse failed: {exc}"],
-            }
-    except ValueError as exc:
-        return {
-            "ok": False,
-            "complete": False,
-            "data_update": {},
-            "raw_values": {},
-            "sensor_errors": [],
-            "invalid_fields": [],
-            "missing_fields": list(REQUIRED_FIELDS),
-            "errors": [f"parse failed: {exc}"],
-        }
-
-
-def process_frame(line):
-    """Apply a received STM32 frame to backend state."""
-    global last_raw_line, last_update, last_complete_update
-    global latest_frame_complete, latest_frame_errors, latest_missing_fields
-
-    parsed = parse_line(line)
-    timestamp = time.time()
-
-    with state_lock:
-        stats["received_frames"] += 1
-        last_raw_line = line
-
-        if parsed.get("ok"):
-            stats["parsed_frames"] += 1
-            latest_data.update(parsed["data_update"])
-            latest_raw_values.clear()
-            latest_raw_values.update(parsed.get("raw_values", {}))
-            last_update = timestamp
-            latest_frame_complete = parsed.get("complete", False)
-            latest_frame_errors = list(parsed.get("errors", []))
-            latest_missing_fields = list(parsed.get("missing_fields", []))
-
-            if latest_frame_complete:
-                stats["complete_frames"] += 1
-                last_complete_update = timestamp
-            else:
-                stats["partial_frames"] += 1
-                if parsed.get("sensor_errors"):
-                    stats["sensor_error_frames"] += 1
-        else:
-            stats["parse_failed_frames"] += 1
-            latest_frame_complete = False
-            latest_frame_errors = list(parsed.get("errors", ["parse failed"]))
-            latest_missing_fields = list(REQUIRED_FIELDS)
-
-        snapshot = dict(latest_data)
-
-    if parsed.get("ok"):
-        with history_lock:
-            history.append({
-                "time": now_str(),
-                "timestamp": round(timestamp, 1),
-                "complete": parsed.get("complete", False),
-                **snapshot,
-            })
-
-    if parsed.get("complete"):
-        append_log("OK", line, "完整帧", parsed)
-    elif parsed.get("ok"):
-        append_log("WARN", line, "部分有效帧", parsed)
-    else:
-        append_log("ERROR", line, "解析失败", parsed)
-
-    return parsed
-
-
-def build_quality(data, frame_errors=None, missing_fields=None):
-    frame_errors = frame_errors or []
-    missing_fields = set(missing_fields or [])
-    quality = {}
-    alerts = []
-
-    def add(field, label, unit, level, text, detail=""):
-        value = data.get(field)
-        stale = field in missing_fields and value is not None
-        if value is None:
-            level = "missing"
-            text = "无数据"
-            detail = "尚未收到该传感器有效值"
-        elif stale:
-            level = "warning"
-            detail = detail or "当前帧缺失该字段，显示上次有效值"
-
-        item = {
-            "label": label,
-            "value": value,
-            "unit": unit,
-            "level": level,
-            "text": text,
-            "detail": detail,
-            "stale": stale,
-        }
-        quality[field] = item
-        if level in {"warning", "critical", "missing"}:
-            alerts.append(f"{label}: {text}")
-
-    temp = data.get("temperature")
-    if temp is None:
-        add("temperature", "温度", "°C", "missing", "无数据")
-    elif temp < 18:
-        add("temperature", "温度", "°C", "warning", "偏低", "建议关闭门窗或适当升温")
-    elif temp > 30:
-        add("temperature", "温度", "°C", "warning", "偏高", "建议通风或降温")
-    else:
-        add("temperature", "温度", "°C", "normal", "舒适")
-
-    humi = data.get("humidity")
-    if humi is None:
-        add("humidity", "湿度", "%", "missing", "无数据")
-    elif humi < 30:
-        add("humidity", "湿度", "%", "warning", "偏干", "建议适当加湿")
-    elif humi <= 85:
-        add("humidity", "湿度", "%", "normal", "可接受", "宿舍环境略潮时仍可先观察")
-    elif humi <= 90:
-        add("humidity", "湿度", "%", "warning", "偏潮", "建议开窗通风或除湿")
-    else:
-        add("humidity", "湿度", "%", "critical", "过高", "建议检查传感器并及时通风除湿")
-
-    adc = data.get("mq135_adc")
-    if adc is None:
-        add("mq135_adc", "空气质量", "ADC", "missing", "无数据")
-    elif adc >= 2500:
-        add("mq135_adc", "空气质量", "ADC", "normal", "良好", "MQ135 ADC 越小表示空气越差")
-    elif adc >= 1500:
-        add("mq135_adc", "空气质量", "ADC", "warning", "一般", "建议保持通风")
-    else:
-        add("mq135_adc", "空气质量", "ADC", "critical", "较差", "建议立即通风或远离污染源")
-
-    mv = data.get("mq135_mv")
-    if mv is None:
-        add("mq135_mv", "MQ135 电压", "mV", "missing", "无数据")
-    else:
-        add("mq135_mv", "MQ135 电压", "mV", "normal", "正常")
-
-    motion = data.get("motion")
-    if motion is None:
-        add("motion", "人体检测", "", "missing", "无数据")
-    elif int(motion) == 1:
-        add("motion", "人体检测", "", "normal", "有人")
-    else:
-        add("motion", "人体检测", "", "normal", "无人")
-
-    db = data.get("sound_db")
-    if db is None:
-        add("sound_db", "噪声", "dB", "missing", "无数据")
-    elif db < 45:
-        add("sound_db", "噪声", "dB", "normal", "安静")
-    elif db <= 60:
-        add("sound_db", "噪声", "dB", "normal", "正常")
-    elif db <= 75:
-        add("sound_db", "噪声", "dB", "warning", "偏吵", "建议降低声源或关闭门窗")
-    else:
-        add("sound_db", "噪声", "dB", "critical", "噪声较大", "建议尽快排查噪声来源")
-
-    if frame_errors:
-        alerts.extend(frame_errors)
-
-    if any(item["level"] == "critical" for item in quality.values()):
-        overall_level = "critical"
-        summary = "存在需要优先处理的环境异常"
-    elif any(item["level"] in {"warning", "missing"} for item in quality.values()) or frame_errors:
-        overall_level = "warning"
-        summary = "环境基本可用，但有项目需要关注"
-    else:
-        overall_level = "normal"
-        summary = "宿舍环境整体正常"
-
-    return {
-        "overall_level": overall_level,
-        "summary": summary,
-        "fields": quality,
-        "alerts": alerts,
-    }
-
-
+# ==================== State snapshot ====================
 def get_state_snapshot():
     with state_lock:
         data = dict(latest_data)
@@ -514,66 +100,6 @@ def calc_average():
         avg = sum(values) / len(values)
         result[field] = int(round(avg)) if field == "motion" else round(avg, 1)
     return result
-
-
-# ==================== Serial readers ====================
-def serial_reader():
-    """Continuously read STM32 frames from the configured serial port."""
-    global ser
-    print(f"[串口] 尝试连接 {SERIAL_PORT}@{BAUD_RATE} ...")
-    while True:
-        try:
-            if ser is None or not ser.is_open:
-                ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-                set_serial_state(
-                    connected=True,
-                    last_error="",
-                    last_open_time=now_str(),
-                )
-                with state_lock:
-                    stats["serial_reconnects"] += 1
-                append_log("INFO", "", f"串口已连接 {SERIAL_PORT}@{BAUD_RATE}")
-                print(f"[串口] 已连接 {SERIAL_PORT}@{BAUD_RATE}")
-
-            raw = ser.readline()
-            if not raw:
-                continue
-
-            line = raw.decode("utf-8", errors="ignore").strip()
-            if line:
-                process_frame(line)
-        except Exception as exc:
-            err = str(exc)
-            print(f"[串口] 读取错误: {err}")
-            append_log("ERROR", "", f"串口错误: {err}")
-            with state_lock:
-                stats["serial_errors"] += 1
-                serial_state.update({"connected": False, "last_error": err})
-            try:
-                if ser and ser.is_open:
-                    ser.close()
-            except Exception:
-                pass
-            ser = None
-            time.sleep(3)
-
-
-def mock_reader():
-    """Generate stable frames for UI testing without STM32 hardware."""
-    print("[串口] MOCK_SERIAL 已启用，将生成模拟传感器数据")
-    samples = [
-        {"temp": 23, "humi": 82, "mq135_adc": 2886, "mq135_mv": 2329, "motion": 1, "sound_db": 28},
-        {"temp": 24, "humi": 81, "mq135_adc": 2868, "mq135_mv": 2315, "motion": 1, "sound_db": 31},
-        {"temp": 23, "humi": 83, "mq135_adc": 2904, "mq135_mv": 2342, "motion": 0, "sound_db": 27},
-    ]
-    idx = 0
-    set_serial_state(connected=True, last_error="", last_open_time=now_str())
-    append_log("INFO", "", "模拟串口已启动")
-    while True:
-        frame = json.dumps(samples[idx % len(samples)], ensure_ascii=False)
-        process_frame(frame)
-        idx += 1
-        time.sleep(2)
 
 
 # ==================== Analysis ====================
@@ -655,6 +181,321 @@ def call_ai(data):
     }
 
 
+# ==================== Companion interaction ====================
+def _value_text(data, field, unit=""):
+    value = data.get(field)
+    if value is None:
+        return "--"
+    if field == "motion":
+        return "有人" if int(value) == 1 else "无人"
+    return f"{value}{unit}"
+
+
+def _primary_alert(quality):
+    alerts = quality.get("alerts") or []
+    return alerts[0] if alerts else ""
+
+
+def _sensor_context_text(data):
+    return (
+        f"温度{_value_text(data, 'temperature', '°C')}，"
+        f"湿度{_value_text(data, 'humidity', '%')}，"
+        f"空气质量{_value_text(data, 'mq135_adc', 'ADC')}，"
+        f"MQ135电压{_value_text(data, 'mq135_mv', 'mV')}，"
+        f"人体检测{_value_text(data, 'motion')}，"
+        f"声音{_value_text(data, 'sound_db', 'dB')}"
+    )
+
+
+def build_local_companion(snapshot):
+    data = snapshot.get("data") or {}
+    quality = snapshot.get("quality") or build_quality(data)
+    frame = snapshot.get("frame") or {}
+    serial_snapshot = snapshot.get("serial") or {}
+
+    if not snapshot.get("online"):
+        port = serial_snapshot.get("port", SERIAL_PORT)
+        baud = serial_snapshot.get("baud_rate", BAUD_RATE)
+        return {
+            "source": "rule",
+            "emotion": "offline",
+            "action": "sleepy",
+            "stance": "等下位机上线",
+            "message": "我现在还没有收到宿舍的新数据，先安静待机。",
+            "detail": f"请确认 STM32 正在通过串口发送 JSON 行帧，当前配置是 {port} @ {baud}。",
+            "suggestion": "等收到完整数据后，我会自动判断温湿度、空气质量、人体检测和声音情况。",
+            "summary": "等待传感器数据",
+            "alerts": [],
+        }
+
+    level = quality.get("overall_level", "normal")
+    context = _sensor_context_text(data)
+    alert = _primary_alert(quality)
+    suggestion = local_analyze(data)["suggestion"]
+
+    if not frame.get("complete"):
+        return {
+            "source": "rule",
+            "emotion": "warning",
+            "action": "checking",
+            "stance": "校验数据帧",
+            "message": "我收到了一些宿舍数据，但这一帧还不够完整。",
+            "detail": alert or "右侧日志里可以看到缺失字段或解析错误。",
+            "suggestion": "先检查下位机 JSON 字段名、换行符和串口发送频率，保证每帧都包含 temp、humi、mq135_adc、mq135_mv、motion、sound_db。",
+            "summary": quality.get("summary", "数据帧需要关注"),
+            "alerts": quality.get("alerts", []),
+        }
+
+    if level == "critical":
+        return {
+            "source": "rule",
+            "emotion": "alert",
+            "action": "alerting",
+            "stance": "需要马上处理",
+            "message": f"我有点担心，{alert or '宿舍里有明显异常'}。",
+            "detail": f"当前读数是：{context}。我建议先处理最异常的那一项。",
+            "suggestion": suggestion,
+            "summary": quality.get("summary", "存在异常"),
+            "alerts": quality.get("alerts", []),
+        }
+
+    if level == "warning":
+        return {
+            "source": "rule",
+            "emotion": "concerned",
+            "action": "thinking",
+            "stance": "温柔提醒中",
+            "message": f"我注意到一点需要照顾的地方：{alert or '有指标进入提醒范围'}。",
+            "detail": f"当前读数是：{context}。可以先小幅调整，再观察几分钟变化。",
+            "suggestion": suggestion,
+            "summary": quality.get("summary", "有项目需要关注"),
+            "alerts": quality.get("alerts", []),
+        }
+
+    humidity = data.get("humidity")
+    detail = "环境整体稳定，适合日常学习和休息。"
+    if isinstance(humidity, (int, float)) and humidity >= 80:
+        detail = "湿度略靠上但仍在可接受范围，我会继续盯着它有没有继续升高。"
+
+    return {
+        "source": "rule",
+        "emotion": "cozy",
+        "action": "breathing",
+        "stance": "安心陪伴中",
+        "message": "我刚看了一眼宿舍，整体状态是舒服的。",
+        "detail": f"{context}。{detail}",
+        "suggestion": suggestion,
+        "summary": quality.get("summary", "宿舍环境整体正常"),
+        "alerts": quality.get("alerts", []),
+    }
+
+
+def _companion_signature(snapshot):
+    data = snapshot.get("data") or {}
+
+    def bucket(field, step=1):
+        value = data.get(field)
+        if not isinstance(value, (int, float)):
+            return value
+        return int(round(value / step) * step)
+
+    payload = {
+        "online": snapshot.get("online"),
+        "complete": (snapshot.get("frame") or {}).get("complete"),
+        "level": (snapshot.get("quality") or {}).get("overall_level"),
+        "temperature": bucket("temperature", 1),
+        "humidity": bucket("humidity", 2),
+        "mq135_adc": bucket("mq135_adc", 80),
+        "sound_db": bucket("sound_db", 3),
+        "alerts": ((snapshot.get("quality") or {}).get("alerts") or [])[:2],
+    }
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+
+def call_companion_ai(snapshot, local_payload):
+    data = snapshot.get("data") or {}
+    quality = snapshot.get("quality") or {}
+    prompt = (
+        '你是"软眠眠"，一个温柔、会观察传感器数据的宿舍环境伴侣。'
+        "请基于当前数据主动对用户说话，像一个角色在陪伴用户，而不是仪表盘说明。"
+        "要求：1到2句中文；不要列清单；不要编造传感器没有的数据；有异常要明确提醒；"
+        "不要推断当前是凌晨、晚上、白天或明天，也不要推断门窗状态和用户行为；"
+        "没有异常就给出安心反馈，可以顺带提一个小观察。\n\n"
+        f"传感器数据：{json.dumps(data, ensure_ascii=False)}\n"
+        f"本地规则判断：{json.dumps(quality, ensure_ascii=False)}\n"
+        f"本地角色草稿：{json.dumps(local_payload, ensure_ascii=False)}"
+    )
+
+    resp = requests.post(
+        f"{AI_API_BASE.rstrip('/')}/chat/completions",
+        headers={
+            "Authorization": f"Bearer {AI_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": AI_MODEL,
+            "messages": [
+                {"role": "system", "content": "你是宿舍环境监测系统里的互动角色，回答要温柔、简短、基于数据。"},
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 180,
+            "temperature": 0.7,
+        },
+        timeout=8,
+    )
+    resp.raise_for_status()
+    content = resp.json()["choices"][0]["message"]["content"].strip()
+    payload = dict(local_payload)
+    payload.update({
+        "source": "ai",
+        "message": content,
+        "generated_at": now_str(),
+    })
+    return payload
+
+
+def get_companion_payload(snapshot):
+    local_payload = build_local_companion(snapshot)
+    signature = _companion_signature(snapshot)
+
+    if not snapshot.get("online") or not AI_API_BASE or not AI_API_KEY:
+        return local_payload
+
+    now = time.time()
+    with conversation_lock:
+        cached = companion_cache.get("payload")
+        cached_signature = companion_cache.get("signature")
+        cached_at = companion_cache.get("created_at", 0.0)
+        if cached and cached_signature == signature and (now - cached_at) < COMPANION_AI_INTERVAL:
+            return cached
+        if cached and (now - cached_at) < COMPANION_AI_INTERVAL and local_payload.get("emotion") != "alert":
+            return local_payload
+
+    try:
+        ai_payload = call_companion_ai(snapshot, local_payload)
+        with conversation_lock:
+            companion_cache.update({
+                "signature": signature,
+                "payload": ai_payload,
+                "created_at": now,
+            })
+        return ai_payload
+    except Exception as exc:
+        print(f"[AI] 角色主动发言失败，回退本地规则: {exc}")
+        with conversation_lock:
+            companion_cache.update({
+                "signature": signature,
+                "payload": local_payload,
+                "created_at": now,
+            })
+        return local_payload
+
+
+def get_conversation_history():
+    with conversation_lock:
+        return list(conversation_history)
+
+
+def append_conversation(role, content):
+    item = {
+        "role": role,
+        "content": content,
+        "time": now_str(),
+    }
+    with conversation_lock:
+        conversation_history.append(item)
+    return item
+
+
+def local_chat_reply(message, snapshot, companion):
+    if not snapshot.get("online"):
+        return "我现在还没收到下位机的新数据，所以只能先帮你检查连接：确认串口号、波特率和 JSON 换行发送都正常。"
+
+    data = snapshot.get("data") or {}
+    quality = snapshot.get("quality") or build_quality(data)
+    fields = quality.get("fields") or {}
+    context = _sensor_context_text(data)
+
+    if any(word in message for word in ("开窗", "通风", "空气", "闷", "异味")):
+        air = fields.get("mq135_adc", {})
+        humi = fields.get("humidity", {})
+        if air.get("level") in {"warning", "critical"} or humi.get("level") in {"warning", "critical"}:
+            return f"我会建议你先通风一会儿。现在{context}，主要需要关注的是{_primary_alert(quality) or '空气或湿度'}。"
+        return f"现在空气质量读数还不错，暂时不用特意开窗。{context}，如果你主观觉得闷，可以短时间通风再观察。"
+
+    if any(word in message for word in ("睡", "休息", "适合")):
+        noise = fields.get("sound_db", {})
+        if quality.get("overall_level") == "normal" and noise.get("level") == "normal":
+            return f"我觉得现在适合休息。{context}，声音比较安静，温湿度也没有明显异常。"
+        return f"先别急着睡，我建议处理一下提醒项：{_primary_alert(quality) or quality.get('summary')}。处理后再看数据会更安心。"
+
+    if any(word in message for word in ("湿", "潮", "除湿")):
+        humi = fields.get("humidity", {})
+        return f"湿度现在是{_value_text(data, 'humidity', '%')}，判断为{humi.get('text', '--')}。{humi.get('detail') or '可以继续观察变化。'}"
+
+    if any(word in message for word in ("温度", "热", "冷")):
+        temp = fields.get("temperature", {})
+        return f"温度现在是{_value_text(data, 'temperature', '°C')}，判断为{temp.get('text', '--')}。{temp.get('detail') or '体感上如果不舒服，可以按实际情况调整。'}"
+
+    if any(word in message for word in ("吵", "声音", "噪声", "分贝")):
+        noise = fields.get("sound_db", {})
+        return f"声音现在是{_value_text(data, 'sound_db', 'dB')}，判断为{noise.get('text', '--')}。{noise.get('detail') or '目前声音环境比较稳定。'}"
+
+    if "adc" in message.lower() or "mq135" in message.lower():
+        air = fields.get("mq135_adc", {})
+        return f"MQ135 ADC 现在是{_value_text(data, 'mq135_adc', 'ADC')}，判断为{air.get('text', '--')}。这里的规则是数值越小空气越差。"
+
+    return f"{companion.get('message')} {companion.get('detail')}"
+
+
+def call_companion_chat_ai(message, snapshot, companion):
+    recent = get_conversation_history()[-8:]
+    data = snapshot.get("data") or {}
+    quality = snapshot.get("quality") or {}
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                '你是"软眠眠"，宿舍环境检测系统里的 AI 互动角色。'
+                "你基于 STM32 传感器数据回答用户，语气温柔、自然、简洁。"
+                "不要编造没有传感器支持的信息，不要说自己能直接控制硬件；"
+                "不要推断当前时间段、季节、门窗状态或用户正在做什么；"
+                "需要行动时请建议用户去开窗、除湿、降噪或检查传感器。"
+            ),
+        },
+        {
+            "role": "system",
+            "content": (
+                f"当前传感器数据：{json.dumps(data, ensure_ascii=False)}\n"
+                f"本地规则判断：{json.dumps(quality, ensure_ascii=False)}\n"
+                f"当前角色状态：{json.dumps(companion, ensure_ascii=False)}"
+            ),
+        },
+    ]
+    for item in recent:
+        role = "assistant" if item.get("role") == "assistant" else "user"
+        messages.append({"role": role, "content": item.get("content", "")})
+    messages.append({"role": "user", "content": message})
+
+    resp = requests.post(
+        f"{AI_API_BASE.rstrip('/')}/chat/completions",
+        headers={
+            "Authorization": f"Bearer {AI_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": AI_MODEL,
+            "messages": messages,
+            "max_tokens": 360,
+            "temperature": 0.65,
+        },
+        timeout=12,
+    )
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"].strip()
+
+
 # ==================== HTTP API ====================
 @app.route("/")
 def index():
@@ -687,20 +528,64 @@ def get_raw_log():
 
 @app.route("/api/serial/ports")
 def get_serial_ports():
-    ports = []
-    if list_ports:
+    try:
+        from serial.tools import list_ports
         ports = [
-            {
-                "device": port.device,
-                "description": port.description,
-                "hwid": port.hwid,
-            }
-            for port in list_ports.comports()
+            {"device": p.device, "description": p.description, "hwid": p.hwid}
+            for p in list_ports.comports()
         ]
+    except Exception:
+        ports = []
     return jsonify({
         "configured_port": SERIAL_PORT,
         "baud_rate": BAUD_RATE,
         "ports": ports,
+    })
+
+
+@app.route("/api/companion/state")
+def companion_state():
+    snapshot = get_state_snapshot()
+    companion = get_companion_payload(snapshot)
+    snapshot["companion"] = companion
+    snapshot["conversation"] = get_conversation_history()
+    return jsonify(snapshot)
+
+
+@app.route("/api/companion/chat", methods=["POST"])
+def companion_chat():
+    payload = request.get_json(silent=True) or {}
+    message = str(payload.get("message", "")).strip()
+    if not message:
+        return jsonify({
+            "ok": False,
+            "source": "none",
+            "reply": "你可以直接在对话框里问我宿舍现在适不适合休息，或者该不该通风。",
+        }), 400
+
+    snapshot = get_state_snapshot()
+    companion = build_local_companion(snapshot)
+    source = "rule"
+
+    if AI_API_BASE and AI_API_KEY:
+        try:
+            reply = call_companion_chat_ai(message, snapshot, companion)
+            source = "ai"
+        except Exception as exc:
+            print(f"[AI] 角色对话失败，回退本地规则: {exc}")
+            reply = local_chat_reply(message, snapshot, companion)
+    else:
+        reply = local_chat_reply(message, snapshot, companion)
+
+    append_conversation("user", message)
+    append_conversation("assistant", reply)
+
+    return jsonify({
+        "ok": True,
+        "source": source,
+        "reply": reply,
+        "companion": companion,
+        "conversation": get_conversation_history(),
     })
 
 
