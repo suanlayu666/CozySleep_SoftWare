@@ -15,6 +15,8 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
+from backend import state
+
 from backend.config import (
     SERIAL_PORT, BAUD_RATE, DEVICE_TIMEOUT, APP_PORT,
     MOCK_SERIAL, AI_API_BASE, AI_API_KEY, AI_MODEL,
@@ -48,14 +50,14 @@ def get_state_snapshot():
     with state_lock:
         data = dict(latest_data)
         raw_values = dict(latest_raw_values)
-        frame_errors = list(latest_frame_errors)
-        missing = list(latest_missing_fields)
+        frame_errors = list(state.latest_frame_errors)
+        missing = list(state.latest_missing_fields)
         stats_snapshot = dict(stats)
         serial_snapshot = dict(serial_state)
-        raw_line = last_raw_line
-        ts = last_update
-        complete_ts = last_complete_update
-        frame_complete = latest_frame_complete
+        raw_line = state.last_raw_line
+        ts = state.last_update
+        complete_ts = state.last_complete_update
+        frame_complete = state.latest_frame_complete
 
     age = round(time.time() - ts, 1) if ts else None
     with log_lock:
