@@ -154,7 +154,7 @@ def build_local_companion(snapshot):
 
     return {
         "source": "rule",
-        "emotion": "cozy",
+        "emotion": "happy",
         "action": "breathing",
         "stance": "安心陪伴中",
         "message": "我刚看了一眼宿舍，整体状态是舒服的。",
