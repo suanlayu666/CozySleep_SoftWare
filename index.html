@@ -688,6 +688,24 @@
             font-size: 0.82rem;
         }
 
+        .memory-list {
+            display: grid;
+            gap: 6px;
+        }
+
+        .memory-item {
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: rgba(228, 240, 231, 0.55);
+            border: 1px solid rgba(111,155,130,0.16);
+            color: var(--text);
+            font-size: 0.84rem;
+        }
+
+        .memory-item::before {
+            content: "🌸 ";
+        }
+
         .chart-wrap {
             height: 190px;
         }
@@ -922,6 +940,18 @@
                     <div class="analysis-state" id="analysisStatus">等待角色读数。</div>
                     <div class="analysis-text" id="analysisText">软眠眠会根据当前数据自动整理状态、提醒和建议。</div>
                     <div class="alerts" id="alertList"></div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head">
+                    <h3>她记得的事</h3>
+                    <span class="pill ok" id="memoryCount">0 条</span>
+                </div>
+                <div class="panel-body">
+                    <div class="memory-list" id="memoryList">
+                        <div class="alert-item">还没有记住关于你的事情，多和她聊聊天吧。</div>
+                    </div>
                 </div>
             </section>
 
@@ -1259,6 +1289,7 @@ function drawTrend() {
 
 function openDrawer() {
     document.body.classList.add('drawer-open');
+    fetchMemory();
 }
 
 function closeDrawer() {
@@ -1346,8 +1377,56 @@ document.addEventListener('keydown', event => {
     if (event.key === 'Escape') closeDrawer();
 });
 
-refreshData();
-setInterval(refreshData, 1000);
+async function fetchMemory() {
+    try {
+        const resp = await fetch(`${API_BASE}/memory/facts`);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        renderMemory(data.facts || []);
+    } catch (e) {
+        // silently skip
+    }
+}
+
+function renderMemory(facts) {
+    $('memoryCount').textContent = `${facts.length} 条`;
+    const list = $('memoryList');
+    if (!facts.length) {
+        list.innerHTML = '<div class="alert-item">还没有记住关于你的事情，多和她聊聊天吧。</div>';
+        return;
+    }
+    list.innerHTML = facts.map(f => `<div class="memory-item">${escapeHtml(f)}</div>`).join('');
+}
+
+// Fetch memory when drawer opens + every 30s
+$('drawerBtn').addEventListener('click', () => { openDrawer(); fetchMemory(); });
+setInterval(fetchMemory, 30000);
+fetchMemory();
+
+function connectSSE() {
+    const streamUrl = `${location.origin}/api/stream`;
+    const source = new EventSource(streamUrl);
+
+    source.onmessage = function (event) {
+        try {
+            const state = JSON.parse(event.data);
+            updateDashboard(state);
+        } catch (e) {
+            console.warn('SSE parse error:', e);
+        }
+    };
+
+    source.onerror = function () {
+        console.warn('SSE disconnected, retrying in 3s...');
+        source.close();
+        // Fallback to polling while SSE reconnects
+        setTimeout(connectSSE, 3000);
+    };
+
+    return source;
+}
+
+connectSSE();
 </script>
 </body>
 </html>

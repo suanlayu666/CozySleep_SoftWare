@@ -179,22 +179,124 @@ def _call_ai_chat(message: str, snapshot: dict, recent_history: list[dict]) -> s
 
 
 def _extract_and_store_facts(user_msg: str, assistant_reply: str):
-    """Extract long-term facts from a conversation turn and store them."""
+    """Extract long-term facts from every conversation turn and store them.
+
+    Uses AI with robust fallback parsing. Auto-triggers compression at 15 facts.
+    """
     if not _has_ai():
         return
 
     messages = build_memory_extraction_prompt(user_msg, assistant_reply)
     try:
         raw = _provider.chat(messages, temperature=0.3, max_tokens=200)
-        # Parse the JSON array from the reply
-        facts = json.loads(raw)
-        if isinstance(facts, list):
-            for fact in facts:
-                if isinstance(fact, str) and fact.strip():
-                    remember_user_fact(fact.strip(), source="chat_extraction")
-                    print(f"[Memory] Stored fact: {fact.strip()}")
-    except (AIError, json.JSONDecodeError, TypeError) as exc:
-        print(f"[Memory] Fact extraction skipped: {exc}")
+    except AIError as exc:
+        print(f"[Memory] Extraction AI call failed: {exc}")
+        return
+
+    facts = _parse_facts(raw)
+    if facts:
+        for fact in facts:
+            if fact.strip():
+                remember_user_fact(fact.strip(), source="chat_extraction")
+                print(f"[Memory] Stored: {fact.strip()}")
+    else:
+        print(f"[Memory] No new facts from this turn")
+
+    # Auto-compress when we have 15+ facts
+    from backend.memory import count_user_facts
+    if count_user_facts() >= 15:
+        _compress_facts()
+
+
+def _parse_facts(raw: str) -> list[str]:
+    """Robustly parse facts from AI output — JSON, markdown-fenced JSON, or line-by-line."""
+    cleaned = raw.strip()
+
+    # Try 1: plain JSON array
+    try:
+        result = json.loads(cleaned)
+        if isinstance(result, list):
+            return [str(f) for f in result if str(f).strip()]
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    # Try 2: strip markdown fences
+    if cleaned.startswith("```"):
+        lines = cleaned.split("\n")
+        # Remove opening fence
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        # Remove closing fence
+        if lines and lines[-1].strip().startswith("```"):
+            lines = lines[:-1]
+        cleaned = "\n".join(lines).strip()
+        try:
+            result = json.loads(cleaned)
+            if isinstance(result, list):
+                return [str(f) for f in result if str(f).strip()]
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Try 3: line-by-line — strip bullet markers and quotes
+    fact_lines = []
+    for line in raw.split("\n"):
+        line = line.strip().lstrip("-•·*").strip().strip('"').strip("'").strip()
+        if line and len(line) > 2 and not line.startswith("```"):
+            fact_lines.append(line)
+    if fact_lines:
+        return fact_lines
+
+    return []
+
+
+def _compress_facts():
+    """When 15+ facts accumulate, ask AI to merge them into 5-8 dense facts."""
+    if not _has_ai():
+        return
+
+    from backend.memory import get_all_user_facts_as_strings, get_user_facts, delete_user_fact
+
+    old_facts = get_all_user_facts_as_strings(limit=30)
+    if len(old_facts) < 15:
+        return
+
+    print(f"[Memory] Compressing {len(old_facts)} facts...")
+    compress_prompt = [
+        {
+            "role": "system",
+            "content": (
+                "你是一个信息整理助手。将下面关于用户的事实去重、合并、精简。\n"
+                "规则：\n"
+                "1. 合并相似或重复的信息\n"
+                "2. 保留所有不重复的独特信息\n"
+                "3. 用简洁的一句话表达每条事实，以'用户'开头\n"
+                "4. 返回纯 JSON 数组，不要加任何解释或 markdown\n"
+                "5. 目标 5-8 条"
+            ),
+        },
+        {
+            "role": "user",
+            "content": f"整理以下事实：\n" + "\n".join(f"- {f}" for f in old_facts),
+        },
+    ]
+
+    try:
+        raw = _provider.chat(compress_prompt, temperature=0.4, max_tokens=400)
+        compressed = _parse_facts(raw)
+        if compressed and len(compressed) >= 3:
+            # Delete all old facts
+            old = get_user_facts(limit=50)
+            for f in old:
+                delete_user_fact(f["id"])
+            # Store compressed ones
+            for fact in compressed:
+                if fact.strip():
+                    remember_user_fact(fact.strip(), source="compression")
+            print(f"[Memory] Compressed {len(old_facts)} → {len(compressed)} facts")
+        else:
+            print(f"[Memory] Compression returned too few facts, skipped")
+    except AIError as exc:
+        print(f"[Memory] Compression failed: {exc}")
 
 
 def chat(message: str, snapshot: dict) -> dict:

@@ -12,7 +12,7 @@ from datetime import datetime
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
 
 from backend import state
@@ -222,6 +222,42 @@ def companion_state():
     return jsonify(snapshot)
 
 
+@app.route("/api/stream")
+def event_stream():
+    """SSE endpoint — pushes companion state updates to the frontend."""
+    def generate():
+        last_sig = None
+        while True:
+            try:
+                snapshot = get_state_snapshot()
+                companion = brain_companion_payload(snapshot)
+                snapshot["companion"] = companion
+                snapshot["conversation"] = get_conversation_history()
+
+                # Build a lightweight signature to skip redundant pushes
+                sig = companion.get("message", "") + str(snapshot.get("last_update", 0))
+                if sig != last_sig:
+                    last_sig = sig
+                    payload = json.dumps(snapshot, ensure_ascii=False)
+                    yield f"data: {payload}\n\n"
+
+                time.sleep(2)
+            except GeneratorExit:
+                break
+            except Exception as exc:
+                print(f"[SSE] Error: {exc}")
+                time.sleep(5)
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @app.route("/api/companion/chat", methods=["POST"])
 def companion_chat():
     payload = request.get_json(silent=True) or {}
@@ -268,6 +304,21 @@ def ai_analyze():
 
     result = local_analyze(data)
     return jsonify({"ok": True, "source": "rule", **result})
+
+
+@app.route("/api/memory/facts")
+def memory_facts():
+    from backend.memory import get_all_user_facts_as_strings, count_user_facts
+    facts = get_all_user_facts_as_strings(limit=20)
+    return jsonify({"count": len(facts), "facts": facts})
+
+
+@app.route("/api/memory/reset", methods=["POST"])
+def memory_reset():
+    from backend.memory import get_user_facts, delete_user_fact
+    for f in get_user_facts(limit=100):
+        delete_user_fact(f["id"])
+    return jsonify({"ok": True, "message": "记忆已清空"})
 
 
 # ==================== Startup ====================

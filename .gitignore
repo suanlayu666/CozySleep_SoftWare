@@ -25,3 +25,9 @@ Thumbs.db
 # 本地运行日志
 server.log
 server.err
+output/
+
+# 长期记忆数据库
+mianmian_memory.db
+mianmian_memory.db-shm
+mianmian_memory.db-wal

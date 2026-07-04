@@ -168,18 +168,24 @@ def build_memory_extraction_prompt(user_msg, assistant_reply):
     or an empty list if nothing new to remember.
     """
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {
+            "role": "system",
+            "content": (
+                "你是一个信息提取助手。你的任务是从对话中提取关于用户的长期事实。\n"
+                "规则：\n"
+                "1. 只提取用户明确告诉你的信息（如姓名、偏好、习惯、身体感受）\n"
+                "2. 不要编造、推断或重复已有的事实\n"
+                "3. 每条事实用一句话表达，以'用户'开头\n"
+                "4. 如果没有新的信息，返回空列表 []\n"
+                "5. 只返回纯 JSON 数组，不要加任何解释或 markdown 标记"
+            ),
+        },
         {
             "role": "user",
             "content": (
-                "从下面的对话中提取关于用户的**新**事实（之前没有提到过的），"
-                "用于长期记忆。只提取用户主动告诉你的信息，不要编造。"
-                "如果用户没有提供任何新的事实，返回空列表。\n\n"
-                "返回格式：一个 JSON 数组，每个元素是一句事实。例如：\n"
-                '["用户叫小北", "用户怕冷", "用户一般在凌晨1点睡"]\n\n'
                 f"用户消息：{user_msg}\n"
                 f"你的回复：{assistant_reply}\n\n"
-                "JSON 数组："
+                "从这个对话中提取用户主动提供的新事实（JSON 数组）："
             ),
         },
     ]
