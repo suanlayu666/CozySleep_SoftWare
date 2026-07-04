@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>环境监测系统</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;          /* 深色基底（背景图覆盖） */
+            --card: rgba(255, 255, 255, 0.05);   /* 毛玻璃卡片 */
+            --card-hover: rgba(255, 255, 255, 0.10);
+            --border: rgba(255, 255, 255, 0.18);  /* 半透明白边 */
+            --text: #ffffff;         /* 白色文字 */
+            --sub: rgba(255, 255, 255, 0.70);     /* 半透明白次要文字 */
+            --accent: #ffd166;       /* 暖金色 - 呼应夕阳 */
+            --accent-dark: #f0a500;
+            --temp: #ff6b6b;         /* 珊瑚红 - 温度 */
+            --humi: #74c0fc;         /* 天蓝 - 湿度 */
+            --noise: #fcc419;        /* 金黄 - 噪声 */
+            --soil: #e59866;         /* 土橙 - 土壤 */
+            --air: #69db7c;          /* 薄荷绿 - 空气质量 */
+            --motion: #da77f2;       /* 粉紫 - 人体检测 */
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            --glass-blur: blur(16px);
+            --glass-border: 1px solid var(--border);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            color: var(--text);
+            min-height: 100vh;
+            padding: 32px 24px;
+            line-height: 1.6;
+            /* 背景图已移至 body::after 动画层 */
+            background-color: #0d1123;
+        }
+        /* 可选：给背景加一层暗色渐变遮罩，让内容更清晰 */
+        body::before {
+            content: '';
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(
+                135deg,
+                rgba(10, 10, 30, 0.35) 0%,
+                rgba(30, 20, 50, 0.25) 50%,
+                rgba(20, 30, 60, 0.30) 100%
+            );
+            z-index: -1;
+        }
+        .container { max-width: 960px; margin: 0 auto; }
+
+        /* Header */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
+        }
+        .header h1 {
+            font-size: 1.5rem; font-weight: 700; color: var(--text);
+            display: flex; align-items: center; gap: 10px;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        }
+        .header h1 .leaf { color: var(--accent); }
+        .header-right { display: flex; align-items: center; gap: 16px; }
+        .status-dot {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            margin-right: 6px;
+        }
+        .status-dot.online { background: #69db7c; box-shadow: 0 0 8px #69db7c; }
+        .status-dot.offline { background: #ff8787; box-shadow: 0 0 8px #ff8787; }
+        .status-dot.connecting { background: var(--accent); animation: pulse 1.2s ease-in-out infinite; box-shadow: 0 0 8px var(--accent); }
+        @keyframes pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+        .time {
+            font-size: 0.88rem; font-weight: 500;
+            color: rgba(255, 230, 160, 0.9);
+            text-shadow: 0 0 12px rgba(255,209,102,0.4), 0 1px 6px rgba(0,0,0,0.3);
+            background: rgba(255,209,102,0.08);
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,209,102,0.15);
+            letter-spacing: 1px;
+        }
+        .status-text { color: var(--sub); font-size: 0.9rem; text-shadow: 0 1px 6px rgba(0,0,0,0.3); }
+
+        /* Sensor Grid */
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .sensor-card {
+            background: var(--card);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            /* 边框微光流动效果 */
+            border: none;
+            position: relative;
+            border-radius: 14px;
+            padding: 24px 18px;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            box-shadow: var(--shadow), inset 0 0 20px rgba(255,255,255,0.03);
+            transition: all 0.25s ease;
+            overflow: hidden;
+            opacity: 0; transform: translateY(30px);  /* 入场动画初始态 */
+        }
+        .sensor-card.show { animation: cardEnter 0.65s cubic-bezier(.22,.8,.3,1) forwards; }
+        @keyframes cardEnter {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .sensor-card::before {
+            content: '';
+            position: absolute; top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: conic-gradient(from 0deg, transparent 0%, rgba(255,209,102,0.15) 10%, transparent 25%);
+            animation: borderGlow 5s linear infinite;
+            z-index: -1;
+        }
+        @keyframes borderGlow {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+        /* 裁切溢出的光，只在边缘可见 */
+        .sensor-card::after {
+            content: '';
+            position: absolute; inset: 1.2px;
+            background: rgba(10, 15, 30, 0.35);  /* 内层遮罩，让卡片内容可读 */
+            border-radius: 13px;
+            z-index: -1;
+        }
+        .sensor-card:hover {
+            background: var(--card-hover);
+            transform: translateY(-56px) scale(1.06);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45), 0 0 50px rgba(255,209,102,0.15);
+            z-index: 10;
+            border-color: rgba(255, 209, 102, 0.35);
+        }
+        .sensor-icon { font-size: 2rem; margin-bottom: 4px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+        .sensor-value { font-size: 2.2rem; font-weight: 700; color: var(--text); text-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+        /* 数值更新脉冲动画 */
+        .sensor-value.pulse {
+            animation: valPulse 0.6s ease-out;
+        }
+        @keyframes valPulse {
+            0%   { transform: scale(1); text-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+            40%  { transform: scale(1.18); filter: brightness(1.4); }
+            100% { transform: scale(1);   filter: brightness(1); }
+        }
+        .sensor-card.metric-temp .sensor-value { color: var(--temp); text-shadow: 0 0 20px rgba(255,107,107,0.4); }
+        .sensor-card.metric-humi .sensor-value { color: var(--humi); text-shadow: 0 0 20px rgba(116,192,252,0.4); }
+        .sensor-card.metric-noise .sensor-value { color: var(--noise); text-shadow: 0 0 20px rgba(252,196,25,0.4); }
+        .sensor-card.metric-soil .sensor-value { color: var(--soil); text-shadow: 0 0 20px rgba(229,152,102,0.4); }
+        .sensor-card.metric-air .sensor-value { color: var(--air); text-shadow: 0 0 20px rgba(105,219,124,0.4); }
+        .sensor-card.metric-motion .sensor-value { color: var(--motion); text-shadow: 0 0 20px rgba(218,119,242,0.4); }
+        .sensor-label { color: var(--sub); font-size: 0.92rem; font-weight: 500; }
+
+        /* AI Panel */
+        .ai-panel {
+            background: var(--card);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: var(--glass-border);
+            border-radius: 14px; padding: 26px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+        .ai-panel h2 { color: var(--text); font-size: 1.15rem; margin-bottom: 16px; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .ai-status { color: var(--accent); font-size: 0.95rem; margin-bottom: 10px; font-weight: 600; }
+        .ai-suggestion {
+            color: var(--text); font-size: 0.98rem; line-height: 1.85;
+            padding: 16px 18px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px; border-left: 3px solid var(--accent);
+            text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            min-height: 2em;
+        }
+        /* 打字机闪烁光标 */
+        .ai-suggestion.typing::after {
+            content: '|';
+            color: var(--accent);
+            font-weight: 700;
+            margin-left: 2px;
+            animation: blinkCursor 0.6s step-end infinite;
+        }
+        @keyframes blinkCursor {
+            50% { opacity: 0; }
+        }
+        .ai-loading {
+            color: var(--sub); font-size: 0.95rem; display: flex; align-items: center; gap: 8px;
+        }
+        .spinner {
+            width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.25);
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Buttons */
+        .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .btn {
+            padding: 11px 24px; border-radius: 10px; border: var(--glass-border);
+            cursor: pointer; font-size: 0.93rem; font-weight: 600;
+            background: var(--card);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            color: var(--text);
+            transition: all 0.22s ease;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        }
+        .btn-refresh:hover { background: var(--card-hover); }
+        .btn-ai {
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            color: #1a1a2e; border-color: transparent;
+            text-shadow: none; font-weight: 700;
+        }
+        .btn-ai:hover {
+            background: linear-gradient(135deg, #ffe066, var(--accent));
+            box-shadow: 0 4px 20px rgba(255, 209, 102, 0.35);
+            transform: translateY(-1px);
+        }
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        /* Data source tag */
+        .source-tag {
+            display: inline-block; background: rgba(255, 255, 255, 0.10);
+            color: var(--sub);
+            padding: 4px 12px; border-radius: 6px; font-size: 0.78rem; margin-top: 8px;
+            border: 1px solid rgba(255,255,255,0.10);
+        }
+
+        /* Trend Modal */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.50);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: rgba(255, 255, 255, 0.13);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: var(--glass-border);
+            border-radius: 16px; padding: 28px;
+            width: 90%; max-width: 620px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 18px;
+        }
+        .modal-header h3 { color: var(--text); font-size: 1.1rem; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+        .modal-close {
+            background: rgba(255,255,255,0.10); border: var(--glass-border);
+            color: var(--text); font-size: 1.1rem; cursor: pointer;
+            line-height: 1; width: 32px; height: 32px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.22); }
+        .trend-hint { color: var(--sub); font-size: 0.82rem; margin-top: 14px; text-align: center; }
+
+        /* ====== 动态效果 1：背景呼吸漂移（Live Wallpaper 风格）====== */
+        body {
+            /* 背图放 body::after 层，独立于遮罩 */
+        }
+        body::after {
+            content: '';
+            position: fixed; top: -10%; left: -10%;
+            width: 120%; height: 120%;
+            background: url('assets/photo.png') 50% 35% / cover no-repeat;
+            z-index: -3;
+            animation: bgBreathe 14s ease-in-out infinite;
+            will-change: transform, filter;
+        }
+        @keyframes bgBreathe {
+            0%   { transform: translate(0, 0) scale(1);      filter: brightness(1.05) saturate(1.05); }
+            20%  { transform: translate(-3%, -2%) scale(1.12); filter: brightness(0.95) saturate(1.10); }
+            40%  { transform: translate(-2%, 2%) scale(1.07);  filter: brightness(1) saturate(1); }
+            60%  { transform: translate(2%, 1%) scale(1.11);   filter: brightness(0.97) saturate(1.08); }
+            80%  { transform: translate(1.5%, -1.5%) scale(1.04); filter: brightness(1.03) saturate(1.02); }
+            100% { transform: translate(0, 0) scale(1);       filter: brightness(1.05) saturate(1.05); }
+        }
+
+        /* ====== 鼠标跟随光晕 ====== */
+        #cursorGlow {
+            position: fixed; width: 200px; height: 200px;
+            border-radius: 50%;
+            pointer-events: none;
+            background: radial-gradient(circle,
+                rgba(255,209,102,0.35) 0%,
+                rgba(255,180,100,0.15) 30%,
+                transparent 65%
+            );
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            will-change: transform;
+        }
+        body:hover #cursorGlow { opacity: 1; }
+
+        /* ====== 动态效果 2：萤火虫/星光粒子画布层 ===== */
+        #particleCanvas {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: -1;   /* 在遮罩之上、内容之下 */
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<!-- 粒子画布层 -->
+<canvas id="particleCanvas"></canvas>
+<!-- 鼠标跟随光晕 -->
+<div id="cursorGlow"></div>
+
+<div class="container">
+
+    <!-- ========== Header ========== -->
+    <div class="header">
+        <h1><span class="leaf">🌿</span> 软眠眠</h1>
+        <div class="header-right">
+            <span class="status-text" id="statusEl">
+                <span class="status-dot connecting"></span> 连接中...
+            </span>
+            <span class="time" id="timeEl"></span>
+        </div>
+    </div>
+
+    <!-- ========== Sensor Cards ========== -->
+    <div class="sensor-grid">
+        <div class="sensor-card metric-temp" style="cursor:pointer" onclick="openTrend('temperature')">
+            <div class="sensor-icon">🌡️</div>
+            <div class="sensor-value" id="tempVal">--°</div>
+            <div class="sensor-label">温度</div>
+            <span class="source-tag">点击查看趋势</span>
+        </div>
+        <div class="sensor-card metric-humi" style="cursor:pointer" onclick="openTrend('humidity')">
+            <div class="sensor-icon">💧</div>
+            <div class="sensor-value" id="humiVal">--%</div>
+            <div class="sensor-label">空气湿度</div>
+            <span class="source-tag">点击查看趋势</span>
+        </div>
+        <div class="sensor-card metric-noise" style="cursor:pointer" onclick="openTrend('sound_db')">
+            <div class="sensor-icon">🔊</div>
+            <div class="sensor-value" id="dbVal">--dB</div>
+            <div class="sensor-label">声音分贝</div>
+            <span class="source-tag">点击查看趋势</span>
+        </div>
+        <div class="sensor-card metric-air" style="cursor:pointer" onclick="openTrend('mq135_adc')">
+            <div class="sensor-icon">🌬️</div>
+            <div class="sensor-value" id="airVal">--ADC</div>
+            <div class="sensor-label">空气质量</div>
+            <span class="source-tag">值越大空气越好</span>
+        </div>
+        <div class="sensor-card metric-motion">
+            <div class="sensor-icon">👤</div>
+            <div class="sensor-value" id="motionVal">--</div>
+            <div class="sensor-label">人体检测</div>
+            <span class="source-tag">1有人 / 0无人</span>
+        </div>
+        <div class="sensor-card metric-soil" style="cursor:pointer" onclick="openTrend('soil')" id="soilCard">
+            <div class="sensor-icon">🪴</div>
+            <div class="sensor-value" id="soilVal">--%</div>
+            <div class="sensor-label">土壤湿度</div>
+            <span class="source-tag">可能无此传感器</span>
+        </div>
+    </div>
+
+    <!-- ========== Analysis Panel ========== -->
+    <div class="ai-panel">
+        <h2>环境分析</h2>
+        <div id="aiContent">
+            <p class="ai-status" id="aiStatus">等待数据分析...</p>
+            <div class="ai-suggestion" id="aiSuggestion">
+                点击下方「分析」按钮，根据近期采集的环境数据获取建议。
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Buttons ========== -->
+    <div class="btn-row">
+        <button class="btn btn-refresh" onclick="refreshData()">刷新数据</button>
+        <button class="btn btn-ai" onclick="aiAnalyze()" id="aiBtn">分析</button>
+    </div>
+
+    <!-- ========== Trend Modal ========== -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeTrend(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modalTitle">趋势图</h3>
+                <button class="modal-close" onclick="closeTrend()">✕</button>
+            </div>
+            <canvas id="trendCanvas" height="200"></canvas>
+            <p class="trend-hint">先采集 20 秒数据后开始绘制 · 之后每秒滚动更新</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ==================== 当前时间 ====================
+function updateTime() {
+    const now = new Date();
+    document.getElementById('timeEl').textContent =
+        now.toLocaleString('zh-CN', { hour12: false });
+}
+updateTime(); setInterval(updateTime, 1000);
+
+// ==================== 配置 ====================
+const API_BASE = 'http://localhost:5000/api';  // 后端服务地址
+
+// ==================== 传感器数据 ====================
+let sensorData = {
+    temperature: 0,
+    humidity: 0,
+    sound_db: 0,
+    mq135_adc: 0,
+    mq135_mv: 0,
+    motion: 0,
+    soil: 0,
+};
+
+// ==================== 刷新数据（从后端获取 STM32 串口数据）====================
+async function refreshData() {
+    setDeviceStatus('connecting');  // 请求前先显示连接中
+    try {
+        const resp = await fetch(`${API_BASE}/sensor`);
+        const result = await resp.json();
+
+        if (result.online && result.data) {
+            sensorData = result.data;
+            updateDisplay();
+            setDeviceStatus('online');
+        } else {
+            // 后端在线但 STM32 未连接/无数据
+            setDeviceStatus('offline');
+        }
+    } catch (err) {
+        console.error('获取数据失败:', err);
+        setDeviceStatus('offline');
+    }
+}
+
+// ==================== 设备连接状态 ====================
+function setDeviceStatus(state) {
+    const el = document.getElementById('statusEl');
+    const map = {
+        connecting: '<span class="status-dot connecting"></span> 连接中...',
+        online:     '<span class="status-dot online"></span> 已连接',
+        offline:    '<span class="status-dot offline"></span> 未连接',
+    };
+    el.innerHTML = map[state] || map.offline;
+}
+
+function updateDisplay() {
+    rollNumber('tempVal', sensorData.temperature, '°');
+    rollNumber('humiVal', sensorData.humidity, '%');
+    rollNumber('dbVal', sensorData.sound_db, 'dB');
+    rollNumber('airVal', sensorData.mq135_adc, '');
+    // 人体检测：显示"有人"/"无人"，不做数字滚动
+    const motionEl = document.getElementById('motionVal');
+    if (sensorData.motion >= 0.5) {
+        motionEl.textContent = '有人';
+        motionEl.style.color = 'var(--motion)';
+    } else {
+        motionEl.textContent = '无人';
+        motionEl.style.color = 'rgba(255,255,255,0.5)';
+    }
+    // 土壤湿度（可能为0表示无传感器）
+    if (sensorData.soil !== undefined && sensorData.soil > 0) {
+        document.getElementById('soilCard').style.display = '';
+        rollNumber('soilVal', sensorData.soil, '%');
+    } else {
+        // 数据为0时隐藏土壤卡片（避免误导）
+        document.getElementById('soilCard').style.display = 'none';
+    }
+}
+
+// ====== 效果1：数字滚动动画 + 脉冲 ======
+function rollNumber(elId, targetValue, suffix) {
+    const el = document.getElementById(elId);
+    const currentText = el.textContent;
+    const currentValue = parseFloat(currentText) || 0;
+
+    // 值没变则跳过（首次加载除外）
+    if (currentValue === targetValue && !el.dataset.first) return;
+    delete el.dataset.first;
+
+    // 脉冲效果
+    el.classList.remove('pulse');
+    void el.offsetWidth;  // 强制 reflow 重置动画
+    el.classList.add('pulse');
+
+    // 数字滚动
+    const diff = targetValue - currentValue;
+    const duration = 500;  // ms
+    const startTime = performance.now();
+
+    function step(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // easeOutCubic 缓动
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const value = (currentValue + diff * eased).toFixed(1);
+        el.textContent = value + suffix;
+        if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
+
+// ==================== AI 分析（真实 API + 本地规则兜底）=====================
+async function aiAnalyze() {
+    const btn = document.getElementById('aiBtn');
+    btn.disabled = true;
+    btn.textContent = '连接中...';
+
+    const aiContent = document.getElementById('aiContent');
+    aiContent.innerHTML = `
+        <p class="ai-loading"><span class="spinner"></span> 连接中...</p>
+    `;
+
+    let status, suggestion, source;
+
+    try {
+        const resp = await fetch(`${API_BASE}/ai-analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sensorData)
+        });
+        const result = await resp.json();
+
+        if (result.ok && result.suggestion) {
+            if (result.source === 'ai') {
+                status = 'AI 连接成功';
+                source = 'Deep Seek V4-Pro';
+            } else {
+                status = 'AI 连接失败';
+                source = 'AI连接失败!(基于常识判断)';
+            }
+            suggestion = result.suggestion;
+        } else {
+            // 后端返回异常，前端兜底
+            const fallback = localAnalyze();
+            status = 'AI 连接失败';
+            suggestion = fallback.suggestion;
+            source = 'AI连接失败!(基于常识判断)';
+        }
+    } catch (err) {
+        // 后端不可达，前端兜底
+        console.error('AI 分析请求失败:', err);
+        const fallback = localAnalyze();
+        status = 'AI 连接失败';
+        suggestion = fallback.suggestion;
+        source = 'AI连接失败!(基于常识判断)';
+    }
+
+    aiContent.innerHTML = `
+        <p class="ai-status" id="aiStatus">${status}</p>
+        <div class="ai-suggestion typing" id="aiSuggestion"></div>
+        <span class="source-tag">建议来源：${source}</span>
+    `;
+    // 打字机效果逐字输出
+    typeWriter(document.getElementById('aiSuggestion'), suggestion);
+
+    btn.disabled = false;
+    btn.textContent = '分析';
+}
+
+// ==================== 本地规则兜底（前后端一致）=====================
+function localAnalyze() {
+    const { temperature, humidity, sound_db, soil, mq135_adc, motion } = sensorData;
+    const issues = [];
+    const tips = [];
+
+    if (temperature < 18) issues.push('温度偏低');
+    else if (temperature > 30) issues.push('温度偏高');
+    else issues.push('温度适宜');
+
+    if (humidity < 30) issues.push('湿度过低');
+    else if (humidity > 70) issues.push('湿度过高');
+    else issues.push('湿度适中');
+
+    if (sound_db > 60) issues.push('噪声超标');
+    else issues.push('噪声正常');
+
+    // 空气质量（ADC值，越小越差）
+    if (mq135_adc > 0 && mq135_adc < 500) {
+        issues.push('空气质量较差');
+        tips.push('空气污染较重，建议通风或开启空气净化器');
+    } else if (mq135_adc >= 2000) {
+        issues.push('空气质量良好');
+    }
+
+    // 人体检测
+    if (motion >= 0.5) {
+        issues.push('检测到有人活动');
+    } else {
+        issues.push('无人活动');
+    }
+
+    // 土壤（可能无此传感器，仅在非零时分析）
+    if (soil && soil > 0) {
+        if (soil < 20) { issues.push('土壤缺水'); tips.push('土壤湿度过低，请及时浇水'); }
+        else if (soil > 80) { issues.push('土壤过湿'); tips.push('土壤湿度过高，暂停浇水并保持通风'); }
+        else issues.push('土壤湿度正常');
+    }
+
+    const status = `当前状态：${issues.join('，')}`;
+
+    if (temperature > 30) tips.push('建议开启空调或通风降温');
+    if (temperature < 18) tips.push('建议开启暖气或关闭门窗');
+    if (humidity < 30) tips.push('建议使用加湿器增加空气湿度');
+    if (humidity > 70) tips.push('建议开启除湿器或开窗通风');
+    if (sound_db > 60) tips.push('当前噪声较大，建议关闭门窗隔音');
+
+    // 去重
+    const uniqueTips = [...new Set(tips)];
+    const suggestion = uniqueTips.length === 0
+        ? '各项指标均在正常范围内，建议保持当前环境状态。'
+        : uniqueTips.join('；') + '。';
+
+    return { status, suggestion };
+}
+
+// ==================== 定时刷新数据（每5秒拉取一次 STM32 最新数据）=====================
+setInterval(refreshData, 5000);
+
+// ==================== 趋势图（点击物理量卡片打开，最近20秒）=====================
+const metricConfig = {
+    temperature: { label: '温度',     unit: '°C', color: '#c8704a' },
+    humidity:    { label: '空气湿度', unit: '%',  color: '#5b8ba3' },
+    sound_db:    { label: '声音分贝', unit: 'dB',  color: '#c4a13a' },
+    mq135_adc:   { label: '空气质量', unit: 'ADC', color: '#4aba7a' },
+    soil:        { label: '土壤湿度', unit: '%',  color: '#8a6d4a' },
+};
+let trendChart = null;
+let trendInterval = null;
+let currentMetric = null;
+let trendBuffer = [];   // 趋势图数据缓冲，每次打开重新采集
+
+function openTrend(metric) {
+    currentMetric = metric;
+    const cfg = metricConfig[metric];
+    document.getElementById('modalTitle').textContent = cfg.label + ' 趋势';
+    document.getElementById('modalOverlay').classList.add('show');
+
+    // 每次打开都重新采集 20 秒数据
+    if (trendChart) { trendChart.destroy(); trendChart = null; }
+    trendBuffer = [];
+
+    collectTrendData();                          // 立即采集第 1 条
+    trendInterval = setInterval(collectTrendData, 1000);
+}
+
+function closeTrend(event) {
+    // 点击模态框背景时关闭；点击 ✕ 按钮时 event 为 undefined 也关闭
+    if (event && event.target.id !== 'modalOverlay') return;
+    document.getElementById('modalOverlay').classList.remove('show');
+    if (trendInterval) { clearInterval(trendInterval); trendInterval = null; }
+    if (trendChart)    { trendChart.destroy(); trendChart = null; }
+}
+
+async function collectTrendData() {
+    if (!currentMetric) return;
+    try {
+        const resp = await fetch(`${API_BASE}/sensor`);
+        const result = await resp.json();
+        if (result.online && result.data) {
+            trendBuffer.push({
+                time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+                ...result.data,
+            });
+            if (trendBuffer.length > 20) trendBuffer.shift();  // 保持 20 条滚动
+        }
+    } catch (e) { console.error('趋势数据获取失败:', e); }
+    renderTrend();
+}
+
+function renderTrend() {
+    const cfg = metricConfig[currentMetric];
+    const ctx = document.getElementById('trendCanvas').getContext('2d');
+
+    // 未满 20 条：显示采集进度
+    if (trendBuffer.length < 20) {
+        if (trendChart) { trendChart.destroy(); trendChart = null; }
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.font = '15px "Segoe UI", "Microsoft YaHei", sans-serif';
+        ctx.textAlign = center;
+        ctx.fillText(`正在采集数据... ${trendBuffer.length}/20`,
+            ctx.canvas.width / 2, ctx.canvas.height / 2);
+        return;
+    }
+
+    // 满 20 条：首次创建图表
+    if (!trendChart) {
+        trendChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [{
+                label: cfg.label + ' (' + cfg.unit + ')',
+                data: [], borderColor: cfg.color,
+                backgroundColor: cfg.color + '22', fill: true,
+                tension: 0.3, pointRadius: 3,
+            }]},
+            options: {
+                responsive: true,
+                plugins: { legend: { labels: { color: '#ffffff' } } },
+                scales: {
+                    x: { ticks: { color: 'rgba(255,255,255,0.65)', maxRotation: 0 }, grid: { color: 'rgba(255,255,255,0.10)' } },
+                    y: { ticks: { color: 'rgba(255,255,255,0.65)' }, grid: { color: 'rgba(255,255,255,0.10)' } },
+                }
+            }
+        });
+    }
+
+    trendChart.data.labels = trendBuffer.map(h => h.time);
+    trendChart.data.datasets[0].data = trendBuffer.map(h => h[currentMetric]);
+    trendChart.update('none');
+}
+
+// ==================== 初始化 ====================
+updateDisplay();
+refreshData();  // 首次加载立即获取真实数据
+
+// ====== 效果2：卡片入场动画（依次淡入上浮）======
+const cards = document.querySelectorAll('.sensor-card');
+cards.forEach((card, i) => {
+    setTimeout(() => card.classList.add('show'), 100 + i * 150);
+});
+
+// ====== 效果4：鼠标跟随光晕 ======
+const cursorGlow = document.getElementById('cursorGlow');
+let glowX = -999, glowY = -999, cursorVisible = false;
+document.addEventListener('mousemove', (e) => {
+    glowX = e.clientX; glowY = e.clientY;
+    if (!cursorVisible) { cursorGlow.style.opacity = '1'; cursorVisible = true; }
+});
+document.addEventListener('mouseleave', () => {
+    cursorGlow.style.opacity = '0'; cursorVisible = false;
+});
+(function updateCursor() {
+    // 平滑插值，让跟随有轻微延迟感更自然
+    const el = cursorGlow;
+    const rect = el.getBoundingClientRect();
+    const curX = rect.left + rect.width / 2;
+    const curY = rect.top + rect.height / 2;
+    el.style.transform = `translate(${glowX - 100}px, ${glowY - 100}px)`;
+    requestAnimationFrame(updateCursor);
+})();
+
+// ====== 效果5：AI 建议打字机效果 ======
+function typeWriter(element, text) {
+    element.textContent = '';
+    let i = 0;
+    function type() {
+        if (i < text.length) {
+            element.textContent += text.charAt(i);
+            i++;
+            setTimeout(type, 28 + Math.random() * 22);  // 28~50ms/字，模拟自然打字节奏
+        } else {
+            element.classList.remove('typing');  // 打完移除闪烁光标
+        }
+    }
+    type();
+}
+
+// ==================== 动态效果：萤火虫/星光粒子漂浮 ====================
+(function() {
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // 粒子配置
+    const PARTICLE_COUNT = 35;
+    const particles = [];
+
+    class Particle {
+        constructor() {
+            this.reset(true);
+        }
+        reset(init = false) {
+            this.x = Math.random() * canvas.width;
+            this.y = init ? Math.random() * canvas.height : -10;
+            // 速度极慢，营造悠然飘浮感
+            this.vx = (Math.random() - 0.5) * 0.3;
+            this.vy = Math.random() * 0.25 + 0.08;
+            // 大小
+            this.radius = Math.random() * 2 + 0.8;
+            // 暖色系（金、橙、白）呼应夕阳
+            const colors = [
+                'rgba(255, 220, 120,',   /* 暖黄 */
+                'rgba(255, 180, 100,',   /* 橙 */
+                'rgba(255, 255, 220,',   /* 米白 */
+                'rgba(255, 209, 102,',   /* 金 */
+                'rgba(200, 230, 255,',   /* 淡蓝星 */
+            ];
+            this.colorBase = colors[Math.floor(Math.random() * colors.length)];
+            // 透明度 & 闪烁周期
+            this.baseAlpha = Math.random() * 0.5 + 0.3;     // 基础透明度
+            this.twinkleSpeed = Math.random() * 0.02 + 0.005; // 闪烁速度
+            this.twinklePhase = Math.random() * Math.PI * 2;   // 初始相位差
+            // 萤火虫发光效果
+            this.glowRadius = this.radius * (Math.random() * 6 + 4);
+            this.glowAlpha = Math.random() * 0.12 + 0.04;
+        }
+        update(time) {
+            this.x += this.vx;
+            this.y += this.vy;
+            // 轻微横向漂移
+            this.x += Math.sin(time * 0.0008 + this.twinklePhase) * 0.15;
+
+            // 出界后重置到顶部
+            if (this.y > canvas.height + 20 || this.x < -20 || this.x > canvas.width + 20) {
+                this.reset(false);
+            }
+
+            // 闪烁透明度
+            this.alpha = this.baseAlpha + Math.sin(time * this.twinkleSpeed + this.twinklePhase) * 0.35;
+        }
+        draw(ctx) {
+            // 发光晕圈
+            const gradient = ctx.createRadialGradient(
+                this.x, this.y, 0,
+                this.x, this.y, this.glowRadius
+            );
+            gradient.addColorStop(0, this.colorBase + (this.alpha * this.glowAlpha).toFixed(3) + ')');
+            gradient.addColorStop(1, this.colorBase + '0)');
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.glowRadius, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // 核心亮点
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.colorBase + this.alpha.toFixed(3) + ')';
+            ctx.fill();
+        }
+    }
+
+    // 创建粒子
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push(new Particle());
+    }
+
+    // 动画循环
+    let lastTime = 0;
+    function animate(time) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => { p.update(time); p.draw(ctx); });
+        requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
