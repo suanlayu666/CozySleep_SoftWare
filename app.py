@@ -35,6 +35,11 @@ from backend.quality import build_quality
 from backend.companion import (
     local_analyze, build_local_companion, local_chat_reply,
 )
+from backend.brain import (
+    get_companion_payload as brain_companion_payload,
+    chat as brain_chat,
+    init_brain,
+)
 from backend.serial_io import (
     process_frame, serial_reader, mock_reader,
     append_log, set_serial_state, is_online, now_str,
@@ -144,109 +149,7 @@ def call_ai(data):
     }
 
 
-# ==================== AI-powered companion bridge ====================
-# (companion functions live in backend.companion; brain.py orchestrates AI)
-def _companion_signature(snapshot):
-    data = snapshot.get("data") or {}
-
-    def bucket(field, step=1):
-        value = data.get(field)
-        if not isinstance(value, (int, float)):
-            return value
-        return int(round(value / step) * step)
-
-    payload = {
-        "online": snapshot.get("online"),
-        "complete": (snapshot.get("frame") or {}).get("complete"),
-        "level": (snapshot.get("quality") or {}).get("overall_level"),
-        "temperature": bucket("temperature", 1),
-        "humidity": bucket("humidity", 2),
-        "mq135_adc": bucket("mq135_adc", 80),
-        "sound_db": bucket("sound_db", 3),
-        "alerts": ((snapshot.get("quality") or {}).get("alerts") or [])[:2],
-    }
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True)
-
-
-def call_companion_ai(snapshot, local_payload):
-    data = snapshot.get("data") or {}
-    quality = snapshot.get("quality") or {}
-    prompt = (
-        '你是"软眠眠"，一个温柔、会观察传感器数据的宿舍环境伴侣。'
-        "请基于当前数据主动对用户说话，像一个角色在陪伴用户，而不是仪表盘说明。"
-        "要求：1到2句中文；不要列清单；不要编造传感器没有的数据；有异常要明确提醒；"
-        "不要推断当前是凌晨、晚上、白天或明天，也不要推断门窗状态和用户行为；"
-        "没有异常就给出安心反馈，可以顺带提一个小观察。\n\n"
-        f"传感器数据：{json.dumps(data, ensure_ascii=False)}\n"
-        f"本地规则判断：{json.dumps(quality, ensure_ascii=False)}\n"
-        f"本地角色草稿：{json.dumps(local_payload, ensure_ascii=False)}"
-    )
-
-    resp = requests.post(
-        f"{AI_API_BASE.rstrip('/')}/chat/completions",
-        headers={
-            "Authorization": f"Bearer {AI_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": AI_MODEL,
-            "messages": [
-                {"role": "system", "content": "你是宿舍环境监测系统里的互动角色，回答要温柔、简短、基于数据。"},
-                {"role": "user", "content": prompt},
-            ],
-            "max_tokens": 180,
-            "temperature": 0.7,
-        },
-        timeout=8,
-    )
-    resp.raise_for_status()
-    content = resp.json()["choices"][0]["message"]["content"].strip()
-    payload = dict(local_payload)
-    payload.update({
-        "source": "ai",
-        "message": content,
-        "generated_at": now_str(),
-    })
-    return payload
-
-
-def get_companion_payload(snapshot):
-    local_payload = build_local_companion(snapshot)
-    signature = _companion_signature(snapshot)
-
-    if not snapshot.get("online") or not AI_API_BASE or not AI_API_KEY:
-        return local_payload
-
-    now = time.time()
-    with conversation_lock:
-        cached = companion_cache.get("payload")
-        cached_signature = companion_cache.get("signature")
-        cached_at = companion_cache.get("created_at", 0.0)
-        if cached and cached_signature == signature and (now - cached_at) < COMPANION_AI_INTERVAL:
-            return cached
-        if cached and (now - cached_at) < COMPANION_AI_INTERVAL and local_payload.get("emotion") != "alert":
-            return local_payload
-
-    try:
-        ai_payload = call_companion_ai(snapshot, local_payload)
-        with conversation_lock:
-            companion_cache.update({
-                "signature": signature,
-                "payload": ai_payload,
-                "created_at": now,
-            })
-        return ai_payload
-    except Exception as exc:
-        print(f"[AI] 角色主动发言失败，回退本地规则: {exc}")
-        with conversation_lock:
-            companion_cache.update({
-                "signature": signature,
-                "payload": local_payload,
-                "created_at": now,
-            })
-        return local_payload
-
-
+# ==================== Conversation state (kept in app.py) ====================
 def get_conversation_history():
     with conversation_lock:
         return list(conversation_history)
@@ -261,54 +164,6 @@ def append_conversation(role, content):
     with conversation_lock:
         conversation_history.append(item)
     return item
-
-
-def call_companion_chat_ai(message, snapshot, companion):
-    recent = get_conversation_history()[-8:]
-    data = snapshot.get("data") or {}
-    quality = snapshot.get("quality") or {}
-
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                '你是"软眠眠"，宿舍环境检测系统里的 AI 互动角色。'
-                "你基于 STM32 传感器数据回答用户，语气温柔、自然、简洁。"
-                "不要编造没有传感器支持的信息，不要说自己能直接控制硬件；"
-                "不要推断当前时间段、季节、门窗状态或用户正在做什么；"
-                "需要行动时请建议用户去开窗、除湿、降噪或检查传感器。"
-            ),
-        },
-        {
-            "role": "system",
-            "content": (
-                f"当前传感器数据：{json.dumps(data, ensure_ascii=False)}\n"
-                f"本地规则判断：{json.dumps(quality, ensure_ascii=False)}\n"
-                f"当前角色状态：{json.dumps(companion, ensure_ascii=False)}"
-            ),
-        },
-    ]
-    for item in recent:
-        role = "assistant" if item.get("role") == "assistant" else "user"
-        messages.append({"role": role, "content": item.get("content", "")})
-    messages.append({"role": "user", "content": message})
-
-    resp = requests.post(
-        f"{AI_API_BASE.rstrip('/')}/chat/completions",
-        headers={
-            "Authorization": f"Bearer {AI_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": AI_MODEL,
-            "messages": messages,
-            "max_tokens": 360,
-            "temperature": 0.65,
-        },
-        timeout=12,
-    )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"].strip()
 
 
 # ==================== HTTP API ====================
@@ -361,7 +216,7 @@ def get_serial_ports():
 @app.route("/api/companion/state")
 def companion_state():
     snapshot = get_state_snapshot()
-    companion = get_companion_payload(snapshot)
+    companion = brain_companion_payload(snapshot)
     snapshot["companion"] = companion
     snapshot["conversation"] = get_conversation_history()
     return jsonify(snapshot)
@@ -379,27 +234,16 @@ def companion_chat():
         }), 400
 
     snapshot = get_state_snapshot()
-    companion = build_local_companion(snapshot)
-    source = "rule"
-
-    if AI_API_BASE and AI_API_KEY:
-        try:
-            reply = call_companion_chat_ai(message, snapshot, companion)
-            source = "ai"
-        except Exception as exc:
-            print(f"[AI] 角色对话失败，回退本地规则: {exc}")
-            reply = local_chat_reply(message, snapshot, companion)
-    else:
-        reply = local_chat_reply(message, snapshot, companion)
+    result = brain_chat(message, snapshot)
 
     append_conversation("user", message)
-    append_conversation("assistant", reply)
+    append_conversation("assistant", result["reply"])
 
     return jsonify({
         "ok": True,
-        "source": source,
-        "reply": reply,
-        "companion": companion,
+        "source": result["source"],
+        "reply": result["reply"],
+        "companion": build_local_companion(snapshot),
         "conversation": get_conversation_history(),
     })
 
@@ -431,6 +275,20 @@ if __name__ == "__main__":
     target = mock_reader if MOCK_SERIAL else serial_reader
     t = threading.Thread(target=target, daemon=True)
     t.start()
+
+    # Init brain with AI provider if configured
+    if AI_API_BASE and AI_API_KEY:
+        from backend.ai_provider import DeepSeekProvider
+        provider = DeepSeekProvider(
+            api_base=AI_API_BASE,
+            api_key=AI_API_KEY,
+            model=AI_MODEL,
+        )
+        init_brain(provider)
+        print(f"[Brain] AI 大脑已激活: {AI_MODEL}")
+    else:
+        init_brain(None)
+        print("[Brain] AI 未配置，使用本地规则模式")
 
     print(f"[服务] 后端已启动: http://localhost:{APP_PORT}")
     print(f"[串口] 配置: {SERIAL_PORT}@{BAUD_RATE}, timeout={DEVICE_TIMEOUT}s")
