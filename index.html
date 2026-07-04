@@ -6,22 +6,22 @@
     <title>宿舍环境检测系统</title>
     <style>
         :root {
-            --bg: #f4f6f8;
+            --bg: #eef2f5;
             --surface: #ffffff;
-            --surface-soft: #eef2f6;
-            --border: #d9e0e8;
-            --text: #17202a;
-            --muted: #647282;
-            --green: #21845b;
-            --green-bg: #e6f4ee;
-            --amber: #a86600;
-            --amber-bg: #fff3d8;
+            --surface-soft: #f6f8fa;
+            --ink: #18212b;
+            --muted: #667585;
+            --line: #d9e1e8;
+            --blue: #2563eb;
+            --blue-soft: #e8f0ff;
+            --green: #16815d;
+            --green-soft: #e5f5ef;
+            --amber: #a86400;
+            --amber-soft: #fff1d2;
             --red: #b42318;
-            --red-bg: #fde7e4;
-            --blue: #276ef1;
-            --blue-bg: #e8f0ff;
-            --purple: #7048a8;
-            --shadow: 0 8px 24px rgba(25, 37, 50, 0.08);
+            --red-soft: #fde7e4;
+            --violet: #6f42c1;
+            --shadow: 0 14px 34px rgba(25, 37, 50, 0.08);
         }
 
         * { box-sizing: border-box; }
@@ -30,7 +30,7 @@
             margin: 0;
             min-height: 100vh;
             background: var(--bg);
-            color: var(--text);
+            color: var(--ink);
             font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
             line-height: 1.45;
         }
@@ -40,32 +40,32 @@
         }
 
         .app {
-            width: min(1320px, calc(100% - 32px));
+            width: min(1380px, calc(100% - 32px));
             margin: 0 auto;
-            padding: 24px 0 32px;
+            padding: 22px 0 34px;
         }
 
         .topbar {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            gap: 16px;
-            margin-bottom: 18px;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 16px;
         }
 
-        .title h1 {
+        .brand h1 {
             margin: 0;
-            font-size: 1.55rem;
+            font-size: 1.45rem;
             letter-spacing: 0;
         }
 
-        .title p {
-            margin: 6px 0 0;
+        .brand p {
+            margin: 4px 0 0;
             color: var(--muted);
-            font-size: 0.92rem;
+            font-size: 0.9rem;
         }
 
-        .actions {
+        .toolbar {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
@@ -76,17 +76,17 @@
             min-height: 38px;
             padding: 0 14px;
             border-radius: 8px;
-            border: 1px solid var(--border);
-            color: var(--text);
+            border: 1px solid var(--line);
+            color: var(--ink);
             background: var(--surface);
             cursor: pointer;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .btn.primary {
-            color: #ffffff;
             border-color: var(--blue);
             background: var(--blue);
+            color: #ffffff;
         }
 
         .btn:disabled {
@@ -94,141 +94,260 @@
             cursor: not-allowed;
         }
 
-        .status-strip {
+        .hero {
+            min-height: 220px;
+            margin-bottom: 16px;
             display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 10px;
+            grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.7fr);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.5);
+            background:
+                linear-gradient(90deg, rgba(10, 23, 38, 0.86), rgba(10, 23, 38, 0.54) 52%, rgba(10, 23, 38, 0.18)),
+                url("assets/photo.png") center 44% / cover no-repeat;
+        }
+
+        .hero-main {
+            padding: 26px;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 220px;
+        }
+
+        .hero-kicker {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
             margin-bottom: 16px;
         }
 
-        .status-item,
-        .panel,
-        .metric-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-        }
-
-        .status-item {
-            min-height: 76px;
-            padding: 12px;
-        }
-
-        .label {
-            color: var(--muted);
-            font-size: 0.78rem;
-            font-weight: 700;
+        .hero h2 {
+            margin: 0;
+            max-width: 640px;
+            font-size: clamp(1.75rem, 2.8vw, 3rem);
+            line-height: 1.08;
             letter-spacing: 0;
         }
 
-        .status-value {
-            margin-top: 7px;
-            font-size: 1rem;
+        .hero-sub {
+            margin: 10px 0 0;
+            max-width: 720px;
+            color: rgba(255,255,255,0.82);
+            font-size: 0.98rem;
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .hero-stat {
+            min-height: 68px;
+            padding: 10px 12px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.12);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .hero-stat span {
+            display: block;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.78rem;
             font-weight: 750;
+        }
+
+        .hero-stat strong {
+            display: block;
+            margin-top: 4px;
+            color: #ffffff;
+            font-size: 1.15rem;
             overflow-wrap: anywhere;
         }
 
-        .pill {
-            display: inline-flex;
+        .hero-side {
+            margin: 14px;
+            padding: 16px;
+            align-self: stretch;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid rgba(255,255,255,0.75);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .system-score {
+            display: flex;
             align-items: center;
-            min-height: 24px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 0.78rem;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .score-label {
+            color: var(--muted);
+            font-size: 0.82rem;
             font-weight: 750;
-            border: 1px solid transparent;
-            white-space: nowrap;
         }
 
-        .pill.normal,
-        .pill.ok {
+        .score-value {
+            margin-top: 5px;
+            font-size: 1.35rem;
+            font-weight: 850;
+        }
+
+        .status-dot {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-weight: 850;
             color: var(--green);
-            background: var(--green-bg);
-            border-color: #bce3d1;
+            background: var(--green-soft);
+            border: 1px solid #bde4d3;
+            flex: 0 0 auto;
         }
 
-        .pill.warning {
+        .status-dot.warning {
             color: var(--amber);
-            background: var(--amber-bg);
+            background: var(--amber-soft);
             border-color: #f0d391;
         }
 
-        .pill.critical,
-        .pill.error,
-        .pill.missing {
+        .status-dot.critical,
+        .status-dot.missing,
+        .status-dot.offline {
             color: var(--red);
-            background: var(--red-bg);
+            background: var(--red-soft);
             border-color: #f3b6af;
         }
 
-        .pill.offline {
-            color: #56606b;
-            background: #e8edf2;
-            border-color: #c9d3de;
+        .side-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
         }
 
-        .layout {
+        .side-item {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            background: var(--surface-soft);
+        }
+
+        .side-item span {
+            color: var(--muted);
+            font-size: 0.76rem;
+            font-weight: 750;
+        }
+
+        .side-item strong {
+            display: block;
+            margin-top: 3px;
+            font-size: 1rem;
+            overflow-wrap: anywhere;
+        }
+
+        .grid {
             display: grid;
-            grid-template-columns: minmax(0, 1.7fr) minmax(340px, 0.9fr);
+            grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.8fr);
             gap: 16px;
             align-items: start;
         }
 
-        .metrics {
+        .section {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .section-head {
+            min-height: 56px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .section-head h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .section-body {
+            padding: 16px;
+        }
+
+        .metric-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 12px;
         }
 
-        .metric-card {
-            padding: 16px;
-            min-height: 148px;
+        .metric {
+            min-height: 154px;
+            padding: 15px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fbfcfd;
             position: relative;
             overflow: hidden;
         }
 
-        .metric-card::before {
+        .metric::before {
             content: "";
             position: absolute;
-            inset: 0 auto 0 0;
+            left: 0;
+            top: 0;
+            bottom: 0;
             width: 4px;
             background: var(--blue);
         }
 
-        .metric-card.normal::before { background: var(--green); }
-        .metric-card.warning::before { background: var(--amber); }
-        .metric-card.critical::before,
-        .metric-card.missing::before { background: var(--red); }
+        .metric.normal::before { background: var(--green); }
+        .metric.warning::before { background: var(--amber); }
+        .metric.critical::before,
+        .metric.missing::before { background: var(--red); }
 
-        .metric-head {
+        .metric-top {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
             gap: 10px;
-            margin-bottom: 12px;
         }
 
         .metric-name {
             color: var(--muted);
-            font-size: 0.88rem;
-            font-weight: 750;
+            font-size: 0.86rem;
+            font-weight: 800;
         }
 
         .metric-value {
             display: flex;
             align-items: baseline;
             gap: 6px;
-            min-height: 50px;
-            font-size: 2.3rem;
-            font-weight: 800;
+            margin-top: 14px;
+            min-height: 52px;
+            font-size: 2.25rem;
+            font-weight: 850;
             letter-spacing: 0;
         }
 
         .metric-unit {
             color: var(--muted);
-            font-size: 0.95rem;
-            font-weight: 700;
+            font-size: 0.92rem;
+            font-weight: 750;
         }
 
         .metric-detail {
@@ -238,60 +357,94 @@
             min-height: 38px;
         }
 
-        .panel {
-            padding: 16px;
-            margin-bottom: 16px;
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            font-size: 0.76rem;
+            font-weight: 850;
+            white-space: nowrap;
         }
 
-        .panel h2 {
-            margin: 0 0 12px;
-            font-size: 1rem;
+        .pill.normal,
+        .pill.ok {
+            color: var(--green);
+            background: var(--green-soft);
+            border-color: #bde4d3;
         }
 
-        .analysis-status {
-            margin: 0 0 10px;
-            color: var(--muted);
+        .pill.warning {
+            color: var(--amber);
+            background: var(--amber-soft);
+            border-color: #f0d391;
+        }
+
+        .pill.critical,
+        .pill.error,
+        .pill.missing {
+            color: var(--red);
+            background: var(--red-soft);
+            border-color: #f3b6af;
+        }
+
+        .pill.offline {
+            color: #526071;
+            background: #e8edf2;
+            border-color: #c7d1dc;
+        }
+
+        .analysis-card {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .analysis-state {
+            padding: 12px;
+            border-radius: 8px;
+            background: var(--blue-soft);
+            color: #244779;
+            border: 1px solid #c5d7ff;
+            font-weight: 750;
             font-size: 0.9rem;
         }
 
         .analysis-text {
-            min-height: 130px;
-            padding: 12px;
+            min-height: 210px;
+            padding: 14px;
             border-radius: 8px;
             background: var(--surface-soft);
-            border: 1px solid var(--border);
+            border: 1px solid var(--line);
             white-space: pre-wrap;
-            font-size: 0.92rem;
+            font-size: 0.94rem;
         }
 
-        .diagnostics {
+        .alerts {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
+            gap: 8px;
         }
 
-        .diag {
-            padding: 10px;
-            border: 1px solid var(--border);
+        .alert-item {
+            padding: 9px 10px;
+            border: 1px solid var(--line);
             border-radius: 8px;
             background: #fbfcfd;
+            color: var(--muted);
+            font-size: 0.86rem;
         }
 
-        .diag strong {
-            display: block;
-            margin-top: 4px;
-            font-size: 1.06rem;
-        }
-
-        .bottom {
+        .lower {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr);
+            grid-template-columns: minmax(0, 1fr) minmax(380px, 0.8fr);
             gap: 16px;
             margin-top: 16px;
         }
 
         .chart-wrap {
-            height: 260px;
+            height: 290px;
         }
 
         #trendCanvas {
@@ -299,15 +452,15 @@
             height: 100%;
             display: block;
             border-radius: 8px;
-            border: 1px solid var(--border);
+            border: 1px solid var(--line);
             background: #fbfcfd;
         }
 
         .legend {
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 10px;
+            gap: 14px;
+            margin-top: 12px;
             color: var(--muted);
             font-size: 0.82rem;
         }
@@ -315,19 +468,57 @@
         .legend span {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
         }
 
         .swatch {
-            width: 12px;
+            width: 14px;
             height: 3px;
-            border-radius: 99px;
+            border-radius: 999px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .stat-box {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            background: #fbfcfd;
+        }
+
+        .stat-box span {
+            color: var(--muted);
+            font-size: 0.76rem;
+            font-weight: 780;
+        }
+
+        .stat-box strong {
+            display: block;
+            margin-top: 3px;
+            font-size: 1.1rem;
+        }
+
+        .debug {
+            margin-top: 16px;
+        }
+
+        details.section summary {
+            list-style: none;
+            cursor: pointer;
+        }
+
+        details.section summary::-webkit-details-marker {
+            display: none;
         }
 
         .log-list {
-            max-height: 320px;
+            max-height: 300px;
             overflow: auto;
-            border: 1px solid var(--border);
+            border: 1px solid var(--line);
             border-radius: 8px;
             background: #101820;
             color: #dce7f2;
@@ -337,54 +528,58 @@
 
         .log-row {
             display: grid;
-            grid-template-columns: 68px 52px minmax(0, 1fr);
+            grid-template-columns: 68px 54px minmax(0, 1fr);
             gap: 8px;
             padding: 8px 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
         }
 
         .log-row:last-child {
             border-bottom: 0;
         }
 
-        .log-level-ok { color: #89e3b3; }
+        .log-level-ok { color: #8fe6b8; }
         .log-level-warn { color: #ffd37a; }
         .log-level-error { color: #ff9b93; }
         .log-level-info { color: #9cc4ff; }
+        .raw { overflow-wrap: anywhere; }
 
-        .raw {
-            overflow-wrap: anywhere;
-        }
-
-        @media (max-width: 1060px) {
-            .status-strip {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+        @media (max-width: 1100px) {
+            .hero,
+            .grid,
+            .lower {
+                grid-template-columns: 1fr;
             }
 
-            .layout,
-            .bottom {
-                grid-template-columns: 1fr;
+            .hero-stats,
+            .metric-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
 
         @media (max-width: 720px) {
             .app {
-                width: min(100% - 20px, 1320px);
-                padding-top: 16px;
+                width: min(100% - 20px, 1380px);
+                padding-top: 14px;
             }
 
             .topbar {
-                display: block;
+                align-items: flex-start;
+                flex-direction: column;
             }
 
-            .actions {
-                margin-top: 12px;
+            .toolbar {
                 justify-content: flex-start;
             }
 
-            .metrics,
-            .status-strip,
-            .diagnostics {
+            .hero-main {
+                padding: 18px;
+            }
+
+            .hero-stats,
+            .metric-grid,
+            .side-grid,
+            .stats-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -397,131 +592,170 @@
 <body>
 <main class="app">
     <header class="topbar">
-        <div class="title">
+        <div class="brand">
             <h1>宿舍环境检测系统</h1>
-            <p>通信测试版 · STM32 USART JSON 帧 · 约 2 秒一帧</p>
+            <p>STM32 实时采集 · 串口通信 · AI 环境分析</p>
         </div>
-        <div class="actions">
-            <button class="btn" id="refreshBtn" type="button">刷新数据</button>
-            <button class="btn primary" id="analyzeBtn" type="button">AI 分析</button>
+        <div class="toolbar">
+            <button class="btn" id="refreshBtn" type="button">刷新</button>
+            <button class="btn primary" id="analyzeBtn" type="button">分析</button>
         </div>
     </header>
 
-    <section class="status-strip">
-        <div class="status-item">
-            <div class="label">设备在线</div>
-            <div class="status-value"><span class="pill offline" id="onlinePill">等待数据</span></div>
+    <section class="hero">
+        <div class="hero-main">
+            <div>
+                <div class="hero-kicker">
+                    <span class="pill offline" id="onlinePill">等待数据</span>
+                    <span class="pill offline" id="framePill">无完整帧</span>
+                    <span class="pill offline" id="qualityPill">未分析</span>
+                </div>
+                <h2 id="heroTitle">正在等待宿舍环境数据</h2>
+                <p class="hero-sub" id="heroSub">系统会根据温湿度、空气质量、人体检测和噪声数据判断当前宿舍环境。</p>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat"><span>温度</span><strong id="hero-temperature">--</strong></div>
+                <div class="hero-stat"><span>湿度</span><strong id="hero-humidity">--</strong></div>
+                <div class="hero-stat"><span>空气质量</span><strong id="hero-mq135_adc">--</strong></div>
+                <div class="hero-stat"><span>噪声</span><strong id="hero-sound_db">--</strong></div>
+            </div>
         </div>
-        <div class="status-item">
-            <div class="label">串口状态</div>
-            <div class="status-value" id="serialState">--</div>
-        </div>
-        <div class="status-item">
-            <div class="label">最后一帧</div>
-            <div class="status-value" id="lastFrame">--</div>
-        </div>
-        <div class="status-item">
-            <div class="label">帧完整性</div>
-            <div class="status-value"><span class="pill offline" id="framePill">无数据</span></div>
-        </div>
-        <div class="status-item">
-            <div class="label">环境状态</div>
-            <div class="status-value"><span class="pill offline" id="qualityPill">未分析</span></div>
-        </div>
-    </section>
-
-    <section class="layout">
-        <div class="metrics">
-            <article class="metric-card missing" id="card-temperature">
-                <div class="metric-head">
-                    <span class="metric-name">温度</span>
-                    <span class="pill missing" id="status-temperature">--</span>
+        <aside class="hero-side">
+            <div class="system-score">
+                <div>
+                    <span class="score-label">综合状态</span>
+                    <div class="score-value" id="scoreText">未连接</div>
                 </div>
-                <div class="metric-value"><span id="value-temperature">--</span><span class="metric-unit">°C</span></div>
-                <div class="metric-detail" id="detail-temperature">等待下位机数据</div>
-            </article>
-
-            <article class="metric-card missing" id="card-humidity">
-                <div class="metric-head">
-                    <span class="metric-name">湿度</span>
-                    <span class="pill missing" id="status-humidity">--</span>
-                </div>
-                <div class="metric-value"><span id="value-humidity">--</span><span class="metric-unit">%</span></div>
-                <div class="metric-detail" id="detail-humidity">等待下位机数据</div>
-            </article>
-
-            <article class="metric-card missing" id="card-mq135_adc">
-                <div class="metric-head">
-                    <span class="metric-name">空气质量</span>
-                    <span class="pill missing" id="status-mq135_adc">--</span>
-                </div>
-                <div class="metric-value"><span id="value-mq135_adc">--</span><span class="metric-unit">ADC</span></div>
-                <div class="metric-detail" id="detail-mq135_adc">MQ135 数值越小空气质量越差</div>
-            </article>
-
-            <article class="metric-card missing" id="card-mq135_mv">
-                <div class="metric-head">
-                    <span class="metric-name">MQ135 电压</span>
-                    <span class="pill missing" id="status-mq135_mv">--</span>
-                </div>
-                <div class="metric-value"><span id="value-mq135_mv">--</span><span class="metric-unit">mV</span></div>
-                <div class="metric-detail" id="detail-mq135_mv">由 ADC 按 3.3V 参考电压换算</div>
-            </article>
-
-            <article class="metric-card missing" id="card-motion">
-                <div class="metric-head">
-                    <span class="metric-name">人体检测</span>
-                    <span class="pill missing" id="status-motion">--</span>
-                </div>
-                <div class="metric-value"><span id="value-motion">--</span><span class="metric-unit"></span></div>
-                <div class="metric-detail" id="detail-motion">HCSR501：1 有人 / 0 无人</div>
-            </article>
-
-            <article class="metric-card missing" id="card-sound_db">
-                <div class="metric-head">
-                    <span class="metric-name">声音分贝</span>
-                    <span class="pill missing" id="status-sound_db">--</span>
-                </div>
-                <div class="metric-value"><span id="value-sound_db">--</span><span class="metric-unit">dB</span></div>
-                <div class="metric-detail" id="detail-sound_db">50ms 采样窗口换算结果</div>
-            </article>
-        </div>
-
-        <aside>
-            <section class="panel">
-                <h2>环境分析</h2>
-                <p class="analysis-status" id="analysisStatus">等待点击 AI 分析，未配置 API 时自动使用本地规则。</p>
-                <div class="analysis-text" id="analysisText">收到下位机数据后，可以在这里查看环境状态、风险提醒和处理建议。</div>
-            </section>
-
-            <section class="panel">
-                <h2>通信统计</h2>
-                <div class="diagnostics">
-                    <div class="diag"><span class="label">接收帧</span><strong id="stat-received">0</strong></div>
-                    <div class="diag"><span class="label">完整帧</span><strong id="stat-complete">0</strong></div>
-                    <div class="diag"><span class="label">部分帧</span><strong id="stat-partial">0</strong></div>
-                    <div class="diag"><span class="label">解析失败</span><strong id="stat-failed">0</strong></div>
-                    <div class="diag"><span class="label">传感器错误</span><strong id="stat-sensor">0</strong></div>
-                    <div class="diag"><span class="label">串口错误</span><strong id="stat-serial">0</strong></div>
-                </div>
-            </section>
+                <div class="status-dot offline" id="scoreDot">--</div>
+            </div>
+            <div class="side-grid">
+                <div class="side-item"><span>串口</span><strong id="serialText">--</strong></div>
+                <div class="side-item"><span>最近帧</span><strong id="lastFrameText">--</strong></div>
+                <div class="side-item"><span>完整帧</span><strong id="completeFrameText">0</strong></div>
+                <div class="side-item"><span>解析失败</span><strong id="failedFrameText">0</strong></div>
+            </div>
         </aside>
     </section>
 
-    <section class="bottom">
-        <div class="panel">
-            <h2>实时趋势</h2>
-            <div class="chart-wrap"><canvas id="trendCanvas"></canvas></div>
-            <div class="legend">
-                <span><i class="swatch" style="background:#d45b43"></i>温度</span>
-                <span><i class="swatch" style="background:#276ef1"></i>湿度</span>
-                <span><i class="swatch" style="background:#8e5a00"></i>噪声</span>
-                <span><i class="swatch" style="background:#21845b"></i>空气质量</span>
+    <section class="grid">
+        <div class="section">
+            <div class="section-head">
+                <h3>实时指标</h3>
+                <span class="pill offline" id="serialPill">串口未打开</span>
+            </div>
+            <div class="section-body">
+                <div class="metric-grid">
+                    <article class="metric missing" id="card-temperature">
+                        <div class="metric-top">
+                            <span class="metric-name">温度</span>
+                            <span class="pill missing" id="status-temperature">--</span>
+                        </div>
+                        <div class="metric-value"><span id="value-temperature">--</span><span class="metric-unit">°C</span></div>
+                        <div class="metric-detail" id="detail-temperature">等待数据</div>
+                    </article>
+
+                    <article class="metric missing" id="card-humidity">
+                        <div class="metric-top">
+                            <span class="metric-name">湿度</span>
+                            <span class="pill missing" id="status-humidity">--</span>
+                        </div>
+                        <div class="metric-value"><span id="value-humidity">--</span><span class="metric-unit">%</span></div>
+                        <div class="metric-detail" id="detail-humidity">等待数据</div>
+                    </article>
+
+                    <article class="metric missing" id="card-mq135_adc">
+                        <div class="metric-top">
+                            <span class="metric-name">空气质量</span>
+                            <span class="pill missing" id="status-mq135_adc">--</span>
+                        </div>
+                        <div class="metric-value"><span id="value-mq135_adc">--</span><span class="metric-unit">ADC</span></div>
+                        <div class="metric-detail" id="detail-mq135_adc">MQ135 数值越小空气质量越差</div>
+                    </article>
+
+                    <article class="metric missing" id="card-mq135_mv">
+                        <div class="metric-top">
+                            <span class="metric-name">MQ135 电压</span>
+                            <span class="pill missing" id="status-mq135_mv">--</span>
+                        </div>
+                        <div class="metric-value"><span id="value-mq135_mv">--</span><span class="metric-unit">mV</span></div>
+                        <div class="metric-detail" id="detail-mq135_mv">等待数据</div>
+                    </article>
+
+                    <article class="metric missing" id="card-motion">
+                        <div class="metric-top">
+                            <span class="metric-name">人体检测</span>
+                            <span class="pill missing" id="status-motion">--</span>
+                        </div>
+                        <div class="metric-value"><span id="value-motion">--</span></div>
+                        <div class="metric-detail" id="detail-motion">HCSR501：1 有人 / 0 无人</div>
+                    </article>
+
+                    <article class="metric missing" id="card-sound_db">
+                        <div class="metric-top">
+                            <span class="metric-name">声音分贝</span>
+                            <span class="pill missing" id="status-sound_db">--</span>
+                        </div>
+                        <div class="metric-value"><span id="value-sound_db">--</span><span class="metric-unit">dB</span></div>
+                        <div class="metric-detail" id="detail-sound_db">等待数据</div>
+                    </article>
+                </div>
             </div>
         </div>
 
-        <div class="panel">
-            <h2>原始串口日志</h2>
+        <aside class="section">
+            <div class="section-head">
+                <h3>AI 环境分析</h3>
+                <span class="pill offline" id="analysisSource">待分析</span>
+            </div>
+            <div class="section-body analysis-card">
+                <div class="analysis-state" id="analysisStatus">本地规则已用于实时状态判断。</div>
+                <div class="analysis-text" id="analysisText">收到稳定数据后，可生成环境状态、风险提醒和处理建议。</div>
+                <div class="alerts" id="alertList"></div>
+            </div>
+        </aside>
+    </section>
+
+    <section class="lower">
+        <div class="section">
+            <div class="section-head">
+                <h3>趋势变化</h3>
+                <span class="pill ok" id="trendCount">0 帧</span>
+            </div>
+            <div class="section-body">
+                <div class="chart-wrap"><canvas id="trendCanvas"></canvas></div>
+                <div class="legend">
+                    <span><i class="swatch" style="background:#d45b43"></i>温度</span>
+                    <span><i class="swatch" style="background:#2563eb"></i>湿度</span>
+                    <span><i class="swatch" style="background:#8e5a00"></i>噪声</span>
+                    <span><i class="swatch" style="background:#16815d"></i>空气质量</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-head">
+                <h3>通信统计</h3>
+                <span class="pill offline" id="debugPill">等待串口</span>
+            </div>
+            <div class="section-body">
+                <div class="stats-grid">
+                    <div class="stat-box"><span>接收帧</span><strong id="stat-received">0</strong></div>
+                    <div class="stat-box"><span>完整帧</span><strong id="stat-complete">0</strong></div>
+                    <div class="stat-box"><span>部分帧</span><strong id="stat-partial">0</strong></div>
+                    <div class="stat-box"><span>解析失败</span><strong id="stat-failed">0</strong></div>
+                    <div class="stat-box"><span>传感器错误</span><strong id="stat-sensor">0</strong></div>
+                    <div class="stat-box"><span>串口错误</span><strong id="stat-serial">0</strong></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <details class="section debug">
+        <summary class="section-head">
+            <h3>原始串口日志</h3>
+            <span class="pill ok" id="logCount">0 条</span>
+        </summary>
+        <div class="section-body">
             <div class="log-list" id="logList">
                 <div class="log-row">
                     <span>--:--:--</span>
@@ -530,7 +764,7 @@
                 </div>
             </div>
         </div>
-    </section>
+    </details>
 </main>
 
 <script>
@@ -538,12 +772,13 @@ const API_BASE = location.protocol.startsWith('http')
     ? `${location.origin}/api`
     : 'http://localhost:5000/api';
 
-const fields = ['temperature', 'humidity', 'mq135_adc', 'mq135_mv', 'motion', 'sound_db'];
+const metricFields = ['temperature', 'humidity', 'mq135_adc', 'mq135_mv', 'motion', 'sound_db'];
+const heroFields = ['temperature', 'humidity', 'mq135_adc', 'sound_db'];
 const trendSeries = [
     { field: 'temperature', color: '#d45b43', label: '温度' },
-    { field: 'humidity', color: '#276ef1', label: '湿度' },
+    { field: 'humidity', color: '#2563eb', label: '湿度' },
     { field: 'sound_db', color: '#8e5a00', label: '噪声' },
-    { field: 'mq135_adc', color: '#21845b', label: '空气质量' },
+    { field: 'mq135_adc', color: '#16815d', label: '空气质量' },
 ];
 
 let lastTimestamp = null;
@@ -568,13 +803,29 @@ function setPill(el, level, text) {
     el.textContent = text;
 }
 
-function formatValue(field, value) {
+function setScore(level, text) {
+    const dot = $('scoreDot');
+    dot.className = `status-dot ${level || 'offline'}`;
+    dot.textContent = level === 'normal' ? 'OK' : (level === 'warning' ? '!' : '--');
+    $('scoreText').textContent = text;
+}
+
+function formatValue(field, value, withUnit = false) {
     if (value === null || value === undefined) return '--';
     if (field === 'motion') return Number(value) === 1 ? '有人' : '无人';
-    if (field === 'temperature' || field === 'humidity' || field === 'sound_db') {
-        return Number(value).toFixed(Number(value) % 1 === 0 ? 0 : 1);
-    }
-    return String(value);
+
+    const units = {
+        temperature: '°C',
+        humidity: '%',
+        mq135_adc: 'ADC',
+        mq135_mv: 'mV',
+        sound_db: 'dB',
+    };
+    const number = Number(value);
+    const text = Number.isFinite(number)
+        ? number.toFixed(number % 1 === 0 ? 0 : 1)
+        : String(value);
+    return withUnit ? `${text}${units[field] || ''}` : text;
 }
 
 function updateMetric(field, item) {
@@ -582,12 +833,31 @@ function updateMetric(field, item) {
     const valueEl = $(`value-${field}`);
     const statusEl = $(`status-${field}`);
     const detailEl = $(`detail-${field}`);
+    if (!card || !valueEl || !statusEl || !detailEl) return;
 
     const level = item?.level || 'missing';
-    card.className = `metric-card ${level}`;
+    card.className = `metric ${level}`;
     valueEl.textContent = formatValue(field, item?.value);
     setPill(statusEl, level, item?.text || '--');
     detailEl.textContent = item?.detail || (item?.stale ? '显示上次有效值' : '数据正常');
+}
+
+function updateHero(state, qualityFields) {
+    const quality = state.quality || {};
+    const summary = quality.summary || '等待数据';
+    const level = state.online ? (quality.overall_level || 'offline') : 'offline';
+
+    $('heroTitle').textContent = state.online ? summary : '正在等待宿舍环境数据';
+    $('heroSub').textContent = state.online
+        ? `最后一帧 ${state.last_update_str}，距离现在 ${state.age_seconds}s。`
+        : '请确认 STM32 已连接、串口号正确，并保持下位机持续发送 JSON 单行帧。';
+
+    heroFields.forEach(field => {
+        const item = qualityFields[field] || {};
+        $(`hero-${field}`).textContent = formatValue(field, item.value, true);
+    });
+
+    setScore(level, state.online ? summary : '未连接');
 }
 
 function updateDashboard(state) {
@@ -596,20 +866,21 @@ function updateDashboard(state) {
     const stats = state.stats || {};
     const quality = state.quality || {};
     const qualityFields = quality.fields || {};
+    const frame = state.frame || {};
 
-    setPill($('onlinePill'), state.online ? 'ok' : 'offline', state.online ? '在线' : '离线');
-    $('serialState').textContent = `${serial.connected ? '已打开' : '未打开'} · ${serial.port || '--'} @ ${serial.baud_rate || '--'}`;
-    $('lastFrame').textContent = state.age_seconds === null
-        ? '无数据'
-        : `${state.last_update_str} · ${state.age_seconds}s 前`;
-    setPill(
-        $('framePill'),
-        state.frame?.complete ? 'ok' : (state.frame?.errors?.length ? 'warning' : 'offline'),
-        state.frame?.complete ? '完整帧' : (state.frame?.errors?.length ? '部分/异常' : '无数据')
-    );
-    setPill($('qualityPill'), quality.overall_level || 'offline', quality.summary || '未分析');
+    setPill($('onlinePill'), state.online ? 'ok' : 'offline', state.online ? '设备在线' : '设备离线');
+    setPill($('framePill'), frame.complete ? 'ok' : (frame.errors?.length ? 'warning' : 'offline'), frame.complete ? '完整帧' : (frame.errors?.length ? '部分帧' : '无数据'));
+    setPill($('qualityPill'), state.online ? quality.overall_level : 'offline', state.online ? quality.summary : '未连接');
+    setPill($('serialPill'), serial.connected ? 'ok' : 'offline', serial.connected ? '串口已打开' : '串口未打开');
+    setPill($('debugPill'), stats.parse_failed_frames || stats.serial_errors ? 'warning' : (state.online ? 'ok' : 'offline'), state.online ? '通信正常' : '等待串口');
 
-    fields.forEach(field => updateMetric(field, qualityFields[field]));
+    $('serialText').textContent = `${serial.port || '--'} @ ${serial.baud_rate || '--'}`;
+    $('lastFrameText').textContent = state.age_seconds === null ? '--' : `${state.age_seconds}s 前`;
+    $('completeFrameText').textContent = stats.complete_frames ?? 0;
+    $('failedFrameText').textContent = stats.parse_failed_frames ?? 0;
+
+    updateHero(state, qualityFields);
+    metricFields.forEach(field => updateMetric(field, qualityFields[field]));
 
     $('stat-received').textContent = stats.received_frames ?? 0;
     $('stat-complete').textContent = stats.complete_frames ?? 0;
@@ -618,13 +889,29 @@ function updateDashboard(state) {
     $('stat-sensor').textContent = stats.sensor_error_frames ?? 0;
     $('stat-serial').textContent = stats.serial_errors ?? 0;
 
+    renderAlerts(quality.alerts || []);
     renderLogs(state.recent_log || []);
     pushTrend(state);
     drawTrend();
 }
 
+function renderAlerts(alerts) {
+    const list = $('alertList');
+    if (!alerts.length) {
+        list.innerHTML = '<div class="alert-item">当前没有需要优先处理的异常。</div>';
+        return;
+    }
+
+    list.innerHTML = alerts
+        .slice(0, 5)
+        .map(alert => `<div class="alert-item">${escapeHtml(alert)}</div>`)
+        .join('');
+}
+
 function renderLogs(logs) {
     const list = $('logList');
+    $('logCount').textContent = `${logs.length} 条`;
+
     if (!logs.length) {
         list.innerHTML = `
             <div class="log-row">
@@ -667,7 +954,8 @@ function pushTrend(state) {
         sound_db: data.sound_db,
         mq135_adc: data.mq135_adc,
     });
-    if (trendBuffer.length > 60) trendBuffer.shift();
+    if (trendBuffer.length > 80) trendBuffer.shift();
+    $('trendCount').textContent = `${trendBuffer.length} 帧`;
 }
 
 function resizeCanvas(canvas) {
@@ -689,7 +977,7 @@ function drawTrend() {
     const innerW = width - pad.left - pad.right;
     const innerH = height - pad.top - pad.bottom;
 
-    ctx.strokeStyle = '#d9e0e8';
+    ctx.strokeStyle = '#d9e1e8';
     ctx.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
         const y = pad.top + innerH * i / 4;
@@ -699,7 +987,7 @@ function drawTrend() {
         ctx.stroke();
     }
 
-    ctx.fillStyle = '#647282';
+    ctx.fillStyle = '#667585';
     ctx.font = '12px Segoe UI, Microsoft YaHei, sans-serif';
     if (trendBuffer.length < 2) {
         ctx.textAlign = 'center';
@@ -739,7 +1027,7 @@ function drawTrend() {
 
     const first = trendBuffer[0]?.time || '';
     const last = trendBuffer[trendBuffer.length - 1]?.time || '';
-    ctx.fillStyle = '#647282';
+    ctx.fillStyle = '#667585';
     ctx.textAlign = 'left';
     ctx.fillText(first, pad.left, height - 10);
     ctx.textAlign = 'right';
@@ -754,16 +1042,19 @@ async function refreshData() {
         updateDashboard(state);
     } catch (err) {
         setPill($('onlinePill'), 'offline', '后端不可达');
-        $('serialState').textContent = '请确认 Flask 后端已启动';
-        $('lastFrame').textContent = err.message;
+        setScore('offline', '后端不可达');
+        $('heroTitle').textContent = '无法连接上位机后端';
+        $('heroSub').textContent = err.message;
+        $('serialText').textContent = 'Flask 未响应';
     }
 }
 
 async function analyze() {
     const btn = $('analyzeBtn');
     btn.disabled = true;
-    $('analysisStatus').textContent = '正在分析...';
-    $('analysisText').textContent = '正在调用 AI 或本地规则，请稍候。';
+    setPill($('analysisSource'), 'offline', '分析中');
+    $('analysisStatus').textContent = '正在生成环境分析。';
+    $('analysisText').textContent = '请稍候。';
 
     try {
         const resp = await fetch(`${API_BASE}/ai-analyze`, {
@@ -772,11 +1063,14 @@ async function analyze() {
             body: JSON.stringify(lastState?.data || {}),
         });
         const result = await resp.json();
-        $('analysisStatus').textContent = `${result.source === 'ai' ? 'AI 分析' : '本地规则'} · ${result.status || ''}`;
+        const source = result.source === 'ai' ? 'AI' : (result.source === 'rule' ? '本地规则' : '无数据');
+        setPill($('analysisSource'), result.ok ? 'ok' : 'warning', source);
+        $('analysisStatus').textContent = result.status || source;
         $('analysisText').textContent = result.suggestion || '没有返回分析内容。';
     } catch (err) {
+        setPill($('analysisSource'), 'error', '失败');
         $('analysisStatus').textContent = '分析失败';
-        $('analysisText').textContent = `无法连接后端分析接口：${err.message}`;
+        $('analysisText').textContent = `无法连接分析接口：${err.message}`;
     } finally {
         btn.disabled = false;
     }
