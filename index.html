@@ -1436,17 +1436,20 @@ $('micBtn').addEventListener('touchend', stopListening);
 // ── Voice TTS playback ──
 let audioEl = null;
 
-async function speakText(text) {
+async function speakText(text, emotion = '') {
     if (!text || text.length < 2) return;
     try {
         // Show speaking state
         const companion = $('companion');
         companion.classList.add('speaking');
 
+        const body = { text };
+        if (emotion) body.emotion = emotion;
+
         const resp = await fetch(`${API_BASE}/tts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text }),
+            body: JSON.stringify(body),
         });
         if (!resp.ok) {
             // TTS not configured or failed — silently skip
@@ -1508,7 +1511,10 @@ async function sendChat(event) {
         setPill($('sourcePill'), result.source === 'ai' ? 'ok' : 'normal', result.source === 'ai' ? 'AI 生成' : '本地规则');
 
         // Speak the reply with TTS
-        if (result.source === 'ai') speakText(result.reply);
+        if (result.source === 'ai') {
+            const emotion = lastState?.companion?.emotion || '';
+            speakText(result.reply, emotion);
+        }
 
     } catch (err) {
         const fallback = `我刚才没能把这句话处理好：${err.message}`;

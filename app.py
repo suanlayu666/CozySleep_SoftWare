@@ -325,6 +325,17 @@ def tts_speak():
     if not text:
         return jsonify({"ok": False, "error": "empty text"}), 400
 
+    # Emotion → TTS style mapping
+    emotion = str(payload.get("emotion", "")).strip()
+    EMOTION_STYLE = {
+        "cozy": "happy",
+        "concerned": "sad",
+        "alert": "fearful",
+        "warning": "neutral",
+        "offline": "neutral",
+    }
+    style = EMOTION_STYLE.get(emotion, "auto")
+
     try:
         from backend.tts_provider import VolcanoTTS, TTSError
         tts = VolcanoTTS(
@@ -333,7 +344,7 @@ def tts_speak():
             access_token=TTS_ACCESS_TOKEN,
             voice_type=TTS_VOICE_TYPE,
         )
-        audio = tts.synthesize(text)
+        audio = tts.synthesize(text, style=style)
         return Response(audio, mimetype="audio/mpeg")
     except TTSError as exc:
         print(f"[TTS] Error: {exc}")

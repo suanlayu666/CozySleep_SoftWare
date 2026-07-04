@@ -34,12 +34,28 @@ class VolcanoTTS:
         self._access_token = access_token or api_key
         self._voice = voice_type
 
-    def synthesize(self, text: str, speed: float = 1.0, volume: float = 1.0) -> bytes:
-        """Convert text to MP3 audio bytes."""
+    def synthesize(self, text: str, speed: float = 1.0, volume: float = 1.0, style: str = "") -> bytes:
+        """Convert text to MP3 audio bytes.
+
+        Args:
+            text: Chinese text to speak.
+            speed: 0.2–3.0 speech speed.
+            volume: 0.1–3.0 volume.
+            style: Emotion style — happy, sad, angry, fearful, neutral, auto, or empty.
+        """
         if not text.strip():
             raise TTSError("Empty text")
 
         reqid = str(uuid.uuid4())
+
+        audio_params = {
+            "voice_type": self._voice,
+            "encoding": "mp3",
+            "speed_ratio": speed,
+            "volume_ratio": volume,
+        }
+        if style:
+            audio_params["style"] = style
 
         payload = {
             "app": {
@@ -50,12 +66,7 @@ class VolcanoTTS:
             "user": {
                 "uid": "soft_mianmian",
             },
-            "audio": {
-                "voice_type": self._voice,
-                "encoding": "mp3",
-                "speed_ratio": speed,
-                "volume_ratio": volume,
-            },
+            "audio": audio_params,
             "request": {
                 "reqid": reqid,
                 "text": text,
