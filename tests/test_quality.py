@@ -1,8 +1,5 @@
 """Characterization tests for build_quality — golden values captured 2026-07-04."""
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import app
+from backend import quality
 
 
 class TestQualityGolden:
@@ -17,7 +14,7 @@ class TestQualityGolden:
             "motion": 1,
             "sound_db": 48,
         }
-        q = app.build_quality(data)
+        q = quality.build_quality(data)
         assert q["overall_level"] == "normal"
         assert q["summary"] == "宿舍环境整体正常"
         assert q["fields"]["temperature"]["text"] == "舒适"
@@ -39,7 +36,7 @@ class TestQualityGolden:
             "motion": 0,
             "sound_db": 80,
         }
-        q = app.build_quality(data)
+        q = quality.build_quality(data)
         assert q["overall_level"] == "critical"
         assert q["fields"]["temperature"]["level"] == "missing"
         assert q["fields"]["temperature"]["text"] == "无数据"
@@ -52,7 +49,7 @@ class TestQualityGolden:
 
     def test_warning_temperature_low(self):
         """Temperature below 18 — warning."""
-        q = app.build_quality({
+        q = quality.build_quality({
             "temperature": 16,
             "humidity": 50,
             "mq135_adc": 2800,
@@ -66,7 +63,7 @@ class TestQualityGolden:
 
     def test_warning_humidity_borderline(self):
         """Humidity 86-90 range — warning (偏潮)."""
-        q = app.build_quality({
+        q = quality.build_quality({
             "temperature": 24,
             "humidity": 88,
             "mq135_adc": 2800,
@@ -79,7 +76,7 @@ class TestQualityGolden:
 
     def test_warning_air_quality_borderline(self):
         """MQ135 ADC 1500-2499 range — warning (一般)."""
-        q = app.build_quality({
+        q = quality.build_quality({
             "temperature": 24,
             "humidity": 60,
             "mq135_adc": 1800,
@@ -92,14 +89,14 @@ class TestQualityGolden:
 
     def test_all_fields_missing(self):
         """No sensor data at all — everything missing."""
-        q = app.build_quality({})
+        q = quality.build_quality({})
         assert q["overall_level"] == "warning"
         for f in ("temperature", "humidity", "mq135_adc", "mq135_mv", "motion", "sound_db"):
             assert q["fields"][f]["level"] == "missing", f"{f} should be missing"
 
     def test_alerts_list_populated(self):
         """Alerts list contains entries for warning/critical/missing fields."""
-        q = app.build_quality({"temperature": 16, "humidity": 50,
+        q = quality.build_quality({"temperature": 16, "humidity": 50,
             "mq135_adc": 2800, "mq135_mv": 2200, "motion": 0, "sound_db": 40})
         assert len(q["alerts"]) > 0
         assert isinstance(q["alerts"][0], str)
