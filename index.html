@@ -3,383 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>宿舍环境检测系统</title>
+    <title>软眠眠宿舍环境伴侣</title>
     <style>
         :root {
-            --bg: #eef2f5;
-            --surface: #ffffff;
-            --surface-soft: #f6f8fa;
-            --ink: #18212b;
-            --muted: #667585;
-            --line: #d9e1e8;
-            --blue: #2563eb;
-            --blue-soft: #e8f0ff;
-            --green: #16815d;
-            --green-soft: #e5f5ef;
-            --amber: #a86400;
-            --amber-soft: #fff1d2;
-            --red: #b42318;
-            --red-soft: #fde7e4;
-            --violet: #6f42c1;
-            --shadow: 0 14px 34px rgba(25, 37, 50, 0.08);
+            --oat: #f7efe5;
+            --paper: #fffaf4;
+            --card: rgba(255, 255, 255, 0.78);
+            --card-solid: #ffffff;
+            --line: rgba(119, 101, 86, 0.16);
+            --text: #4f463f;
+            --muted: #8b7f74;
+            --peach: #dfaa94;
+            --peach-soft: #f6ddd1;
+            --sage: #6f9b82;
+            --sage-soft: #e4f0e7;
+            --sky: #7b9fbd;
+            --sky-soft: #e3eef6;
+            --plum: #8b6f92;
+            --amber: #ad7a27;
+            --amber-soft: #faedce;
+            --red: #b75b4f;
+            --red-soft: #f7ded9;
+            --shadow: 0 22px 60px rgba(99, 76, 58, 0.14);
         }
 
         * { box-sizing: border-box; }
 
+        html,
         body {
             margin: 0;
             min-height: 100vh;
-            background: var(--bg);
-            color: var(--ink);
-            font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
-            line-height: 1.45;
+            background: var(--oat);
+            color: var(--text);
+            font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+            overflow: hidden;
         }
 
-        button {
-            font: inherit;
-        }
+        button { font: inherit; }
 
         .app {
-            width: min(1380px, calc(100% - 32px));
-            margin: 0 auto;
-            padding: 22px 0 34px;
+            min-height: 100vh;
+            position: relative;
+            background:
+                linear-gradient(180deg, #fbf4eb 0%, #f7efe5 58%, #efe3d7 100%);
+        }
+
+        .stage {
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            padding: 28px;
+            transition: transform 0.52s cubic-bezier(.22,.8,.24,1);
+        }
+
+        body.drawer-open .stage {
+            transform: translateX(-110px);
         }
 
         .topbar {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
             gap: 18px;
-            margin-bottom: 16px;
+            z-index: 3;
         }
 
         .brand h1 {
             margin: 0;
-            font-size: 1.45rem;
+            font-size: 1.35rem;
             letter-spacing: 0;
         }
 
         .brand p {
-            margin: 4px 0 0;
+            margin: 5px 0 0;
             color: var(--muted);
             font-size: 0.9rem;
         }
 
-        .toolbar {
+        .top-actions {
             display: flex;
+            align-items: center;
+            justify-content: flex-end;
             gap: 10px;
             flex-wrap: wrap;
-            justify-content: flex-end;
         }
 
         .btn {
-            min-height: 38px;
-            padding: 0 14px;
-            border-radius: 8px;
+            min-height: 40px;
+            padding: 0 15px;
+            border-radius: 20px;
             border: 1px solid var(--line);
-            color: var(--ink);
-            background: var(--surface);
+            background: rgba(255,255,255,0.66);
+            color: var(--text);
             cursor: pointer;
-            font-weight: 700;
+            font-weight: 750;
+            box-shadow: 0 8px 22px rgba(110, 89, 69, 0.08);
+            backdrop-filter: blur(12px);
         }
 
         .btn.primary {
-            border-color: var(--blue);
-            background: var(--blue);
+            border-color: transparent;
+            background: var(--peach);
             color: #ffffff;
         }
 
         .btn:disabled {
-            opacity: 0.55;
+            opacity: 0.58;
             cursor: not-allowed;
-        }
-
-        .hero {
-            min-height: 220px;
-            margin-bottom: 16px;
-            display: grid;
-            grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.7fr);
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(255,255,255,0.5);
-            background:
-                linear-gradient(90deg, rgba(10, 23, 38, 0.86), rgba(10, 23, 38, 0.54) 52%, rgba(10, 23, 38, 0.18)),
-                url("assets/photo.png") center 44% / cover no-repeat;
-        }
-
-        .hero-main {
-            padding: 26px;
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 220px;
-        }
-
-        .hero-kicker {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .hero h2 {
-            margin: 0;
-            max-width: 640px;
-            font-size: clamp(1.75rem, 2.8vw, 3rem);
-            line-height: 1.08;
-            letter-spacing: 0;
-        }
-
-        .hero-sub {
-            margin: 10px 0 0;
-            max-width: 720px;
-            color: rgba(255,255,255,0.82);
-            font-size: 0.98rem;
-        }
-
-        .hero-stats {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 10px;
-            margin-top: 24px;
-        }
-
-        .hero-stat {
-            min-height: 68px;
-            padding: 10px 12px;
-            border: 1px solid rgba(255,255,255,0.18);
-            background: rgba(255,255,255,0.12);
-            border-radius: 8px;
-            backdrop-filter: blur(10px);
-        }
-
-        .hero-stat span {
-            display: block;
-            color: rgba(255,255,255,0.7);
-            font-size: 0.78rem;
-            font-weight: 750;
-        }
-
-        .hero-stat strong {
-            display: block;
-            margin-top: 4px;
-            color: #ffffff;
-            font-size: 1.15rem;
-            overflow-wrap: anywhere;
-        }
-
-        .hero-side {
-            margin: 14px;
-            padding: 16px;
-            align-self: stretch;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.92);
-            border: 1px solid rgba(255,255,255,0.75);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            gap: 16px;
-        }
-
-        .system-score {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-        }
-
-        .score-label {
-            color: var(--muted);
-            font-size: 0.82rem;
-            font-weight: 750;
-        }
-
-        .score-value {
-            margin-top: 5px;
-            font-size: 1.35rem;
-            font-weight: 850;
-        }
-
-        .status-dot {
-            width: 58px;
-            height: 58px;
-            border-radius: 50%;
-            display: grid;
-            place-items: center;
-            font-weight: 850;
-            color: var(--green);
-            background: var(--green-soft);
-            border: 1px solid #bde4d3;
-            flex: 0 0 auto;
-        }
-
-        .status-dot.warning {
-            color: var(--amber);
-            background: var(--amber-soft);
-            border-color: #f0d391;
-        }
-
-        .status-dot.critical,
-        .status-dot.missing,
-        .status-dot.offline {
-            color: var(--red);
-            background: var(--red-soft);
-            border-color: #f3b6af;
-        }
-
-        .side-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-        }
-
-        .side-item {
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid var(--line);
-            background: var(--surface-soft);
-        }
-
-        .side-item span {
-            color: var(--muted);
-            font-size: 0.76rem;
-            font-weight: 750;
-        }
-
-        .side-item strong {
-            display: block;
-            margin-top: 3px;
-            font-size: 1rem;
-            overflow-wrap: anywhere;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.8fr);
-            gap: 16px;
-            align-items: start;
-        }
-
-        .section {
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            box-shadow: var(--shadow);
-        }
-
-        .section-head {
-            min-height: 56px;
-            padding: 14px 16px;
-            border-bottom: 1px solid var(--line);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-        }
-
-        .section-head h3 {
-            margin: 0;
-            font-size: 1rem;
-        }
-
-        .section-body {
-            padding: 16px;
-        }
-
-        .metric-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
-        }
-
-        .metric {
-            min-height: 154px;
-            padding: 15px;
-            border: 1px solid var(--line);
-            border-radius: 8px;
-            background: #fbfcfd;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .metric::before {
-            content: "";
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: var(--blue);
-        }
-
-        .metric.normal::before { background: var(--green); }
-        .metric.warning::before { background: var(--amber); }
-        .metric.critical::before,
-        .metric.missing::before { background: var(--red); }
-
-        .metric-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        .metric-name {
-            color: var(--muted);
-            font-size: 0.86rem;
-            font-weight: 800;
-        }
-
-        .metric-value {
-            display: flex;
-            align-items: baseline;
-            gap: 6px;
-            margin-top: 14px;
-            min-height: 52px;
-            font-size: 2.25rem;
-            font-weight: 850;
-            letter-spacing: 0;
-        }
-
-        .metric-unit {
-            color: var(--muted);
-            font-size: 0.92rem;
-            font-weight: 750;
-        }
-
-        .metric-detail {
-            margin-top: 8px;
-            color: var(--muted);
-            font-size: 0.86rem;
-            min-height: 38px;
         }
 
         .pill {
             display: inline-flex;
             align-items: center;
-            min-height: 24px;
-            padding: 2px 8px;
+            min-height: 26px;
+            padding: 2px 10px;
             border-radius: 999px;
             border: 1px solid transparent;
-            font-size: 0.76rem;
+            font-size: 0.78rem;
             font-weight: 850;
             white-space: nowrap;
         }
 
-        .pill.normal,
-        .pill.ok {
-            color: var(--green);
-            background: var(--green-soft);
-            border-color: #bde4d3;
+        .pill.ok,
+        .pill.normal {
+            color: var(--sage);
+            background: var(--sage-soft);
+            border-color: rgba(111,155,130,0.22);
         }
 
         .pill.warning {
             color: var(--amber);
             background: var(--amber-soft);
-            border-color: #f0d391;
+            border-color: rgba(173,122,39,0.22);
         }
 
         .pill.critical,
@@ -387,64 +142,554 @@
         .pill.missing {
             color: var(--red);
             background: var(--red-soft);
-            border-color: #f3b6af;
+            border-color: rgba(183,91,79,0.2);
         }
 
         .pill.offline {
-            color: #526071;
-            background: #e8edf2;
-            border-color: #c7d1dc;
+            color: #786f67;
+            background: rgba(255,255,255,0.64);
+            border-color: var(--line);
         }
 
-        .analysis-card {
+        .center {
+            min-height: 0;
+            display: grid;
+            place-items: center;
+            padding: 26px 0;
+        }
+
+        .companion-area {
+            width: min(760px, 100%);
+            display: grid;
+            justify-items: center;
+            text-align: center;
+        }
+
+        .mood-line {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 22px;
+        }
+
+        .companion-wrap {
+            position: relative;
+            width: min(330px, 70vw);
+            aspect-ratio: 1.25 / 1;
+            display: grid;
+            place-items: center;
+        }
+
+        .companion-shadow {
+            position: absolute;
+            bottom: 14px;
+            width: 76%;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(139,111,92,0.14);
+            filter: blur(1px);
+        }
+
+        .companion {
+            width: 236px;
+            height: 178px;
+            position: relative;
+            border-radius: 48% 48% 42% 42%;
+            background: #fffdf8;
+            border: 2px solid rgba(255,255,255,0.9);
+            box-shadow:
+                inset 0 -10px 22px rgba(226,170,148,0.13),
+                0 26px 55px rgba(153,116,92,0.18);
+            cursor: pointer;
+            transform-origin: center 78%;
+            animation: breathe 3.2s ease-in-out infinite;
+        }
+
+        .companion::before,
+        .companion::after {
+            content: "";
+            position: absolute;
+            top: 30px;
+            width: 46px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--peach-soft);
+            opacity: 0.78;
+        }
+
+        .companion::before { left: 33px; }
+        .companion::after { right: 33px; }
+
+        .face {
+            position: absolute;
+            inset: 0;
+        }
+
+        .eye {
+            position: absolute;
+            top: 78px;
+            width: 35px;
+            height: 14px;
+            border-bottom: 4px solid #64564d;
+            border-radius: 0 0 30px 30px;
+        }
+
+        .eye.left { left: 65px; }
+        .eye.right { right: 65px; }
+
+        .mouth {
+            position: absolute;
+            left: 50%;
+            top: 106px;
+            width: 26px;
+            height: 14px;
+            border-bottom: 3px solid #78685c;
+            border-radius: 0 0 20px 20px;
+            transform: translateX(-50%);
+        }
+
+        .arm {
+            position: absolute;
+            top: 104px;
+            width: 54px;
+            height: 18px;
+            border-radius: 999px;
+            background: #fffdf8;
+            border: 1px solid rgba(119, 101, 86, 0.12);
+            box-shadow: 0 8px 18px rgba(153,116,92,0.08);
+            z-index: -1;
+            transform-origin: center;
+        }
+
+        .arm.left {
+            left: -34px;
+            transform: rotate(-14deg);
+        }
+
+        .arm.right {
+            right: -34px;
+            transform: rotate(14deg);
+        }
+
+        .sleep-mark {
+            position: absolute;
+            right: 8px;
+            top: -32px;
+            display: grid;
+            gap: 2px;
+            color: var(--plum);
+            font-weight: 900;
+            opacity: 0.55;
+            animation: floatText 2.7s ease-in-out infinite;
+        }
+
+        .sleep-mark span:nth-child(1) { font-size: 1.25rem; }
+        .sleep-mark span:nth-child(2) { font-size: 0.95rem; transform: translateX(15px); }
+
+        .companion:not(.offline) .sleep-mark {
+            opacity: 0;
+        }
+
+        .companion.cozy .mouth,
+        .companion.normal .mouth {
+            width: 34px;
+            height: 18px;
+            border-bottom-width: 4px;
+        }
+
+        .companion.concerned .eye.left,
+        .companion.warning .eye.left {
+            transform: rotate(8deg);
+        }
+
+        .companion.concerned .eye.right,
+        .companion.warning .eye.right {
+            transform: rotate(-8deg);
+        }
+
+        .companion.concerned .mouth,
+        .companion.warning .mouth {
+            width: 22px;
+            height: 9px;
+            top: 111px;
+            border-bottom-color: #9a7653;
+        }
+
+        .companion.alert .eye,
+        .companion.critical .eye {
+            top: 73px;
+            width: 22px;
+            height: 22px;
+            border: 0;
+            border-radius: 50%;
+            background: #6b5549;
+        }
+
+        .companion.alert .mouth,
+        .companion.critical .mouth {
+            top: 105px;
+            width: 24px;
+            height: 22px;
+            border: 3px solid #9b5a4f;
+            border-radius: 50%;
+            background: rgba(247, 222, 217, 0.62);
+        }
+
+        .companion.thinking .arm.right {
+            animation: softWave 1.8s ease-in-out infinite;
+        }
+
+        .companion.alerting {
+            animation: alertWiggle 0.82s ease-in-out infinite;
+        }
+
+        .companion.speaking .mouth {
+            animation: speakMouth 0.52s ease-in-out infinite;
+        }
+
+        .companion.warning {
+            background: #fff8ec;
+            box-shadow:
+                inset 0 -10px 24px rgba(173,122,39,0.14),
+                0 26px 55px rgba(153,116,92,0.18);
+        }
+
+        .companion.critical,
+        .companion.missing,
+        .companion.offline {
+            background: #fff6f3;
+            box-shadow:
+                inset 0 -10px 24px rgba(183,91,79,0.14),
+                0 26px 55px rgba(153,116,92,0.18);
+        }
+
+        .companion.poked {
+            animation: poke 0.46s ease-out;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scaleX(1) scaleY(1) translateY(0); }
+            50% { transform: scaleX(1.025) scaleY(0.965) translateY(5px); }
+        }
+
+        @keyframes floatText {
+            0% { transform: translateY(0); opacity: 0.26; }
+            50% { transform: translateY(-12px); opacity: 0.68; }
+            100% { transform: translateY(-22px); opacity: 0.08; }
+        }
+
+        @keyframes poke {
+            0% { transform: scale(1); }
+            30% { transform: scaleX(0.92) scaleY(1.12) translateY(-2px); }
+            62% { transform: scaleX(1.06) scaleY(0.94) translateY(7px); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes softWave {
+            0%, 100% { transform: rotate(14deg) translateY(0); }
+            50% { transform: rotate(-8deg) translateY(-8px); }
+        }
+
+        @keyframes alertWiggle {
+            0%, 100% { transform: rotate(0deg) translateY(0); }
+            25% { transform: rotate(-2deg) translateY(-2px); }
+            75% { transform: rotate(2deg) translateY(-2px); }
+        }
+
+        @keyframes speakMouth {
+            0%, 100% { height: 9px; width: 24px; }
+            50% { height: 20px; width: 30px; border-radius: 50%; }
+        }
+
+        .dialogue {
+            width: min(680px, 100%);
+            margin-top: 26px;
+            padding: 18px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(255,255,255,0.88);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(14px);
+            text-align: left;
+        }
+
+        .dialogue-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .companion-status {
+            color: var(--muted);
+            font-size: 0.82rem;
+            font-weight: 850;
+        }
+
+        .dialogue-main {
+            margin: 0;
+            font-size: clamp(1.08rem, 2.4vw, 1.45rem);
+            font-weight: 760;
+            color: var(--text);
+        }
+
+        .dialogue-sub {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .chat-feed {
+            margin-top: 10px;
+            display: grid;
+            gap: 10px;
+            max-height: 190px;
+            overflow: auto;
+            padding-right: 2px;
+        }
+
+        .chat-divider {
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        .chat-divider::before,
+        .chat-divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--line);
+        }
+
+        .chat-message {
+            width: fit-content;
+            max-width: min(92%, 560px);
+            padding: 10px 12px;
+            border-radius: 8px;
+            line-height: 1.55;
+            font-size: 0.92rem;
+            box-shadow: 0 8px 20px rgba(108, 85, 68, 0.07);
+            overflow-wrap: anywhere;
+        }
+
+        .chat-message.assistant {
+            justify-self: start;
+            background: #fffaf4;
+            border: 1px solid rgba(223,170,148,0.28);
+        }
+
+        .chat-message.user {
+            justify-self: end;
+            background: var(--sage-soft);
+            border: 1px solid rgba(111,155,130,0.24);
+        }
+
+        .chat-time {
+            display: block;
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 0.68rem;
+            font-weight: 760;
+        }
+
+        .chat-form {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 44px;
+            gap: 8px;
+        }
+
+        .chat-input {
+            min-height: 44px;
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.82);
+            color: var(--text);
+            padding: 0 13px;
+            outline: none;
+            font: inherit;
+        }
+
+        .chat-input:focus {
+            border-color: rgba(111,155,130,0.5);
+            box-shadow: 0 0 0 3px rgba(111,155,130,0.13);
+        }
+
+        .send-btn {
+            width: 44px;
+            height: 44px;
+            border: 0;
+            border-radius: 8px;
+            background: var(--peach);
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 1.18rem;
+            font-weight: 900;
+            box-shadow: 0 9px 20px rgba(223,170,148,0.28);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            z-index: 20;
+            width: min(430px, calc(100vw - 24px));
+            height: 100vh;
+            background: rgba(255,250,244,0.92);
+            border-left: 1px solid rgba(119,101,86,0.18);
+            box-shadow: -22px 0 70px rgba(80, 57, 41, 0.12);
+            backdrop-filter: blur(22px);
+            transform: translateX(105%);
+            transition: transform 0.52s cubic-bezier(.22,.8,.24,1);
             display: flex;
             flex-direction: column;
+        }
+
+        body.drawer-open .drawer {
+            transform: translateX(0);
+        }
+
+        .drawer-head {
+            min-height: 72px;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             gap: 12px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .drawer-head h2 {
+            margin: 0;
+            font-size: 1.08rem;
+        }
+
+        .drawer-body {
+            padding: 18px;
+            overflow: auto;
+            display: grid;
+            gap: 14px;
+        }
+
+        .panel {
+            border-radius: 8px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(255,255,255,0.86);
+            box-shadow: 0 10px 26px rgba(108, 85, 68, 0.08);
+        }
+
+        .panel-head {
+            min-height: 50px;
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .panel-head h3 {
+            margin: 0;
+            font-size: 0.96rem;
+        }
+
+        .panel-body {
+            padding: 14px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .metric-card {
+            min-height: 98px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.76);
+        }
+
+        .metric-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metric-name {
+            color: var(--muted);
+            font-size: 0.76rem;
+            font-weight: 800;
+        }
+
+        .metric-value {
+            margin-top: 8px;
+            font-size: 1.55rem;
+            font-weight: 900;
+        }
+
+        .metric-detail {
+            margin-top: 5px;
+            color: var(--muted);
+            font-size: 0.76rem;
+            min-height: 32px;
         }
 
         .analysis-state {
             padding: 12px;
             border-radius: 8px;
-            background: var(--blue-soft);
-            color: #244779;
-            border: 1px solid #c5d7ff;
-            font-weight: 750;
-            font-size: 0.9rem;
+            background: var(--sky-soft);
+            color: #416983;
+            border: 1px solid rgba(123,159,189,0.22);
+            font-size: 0.88rem;
+            font-weight: 760;
         }
 
         .analysis-text {
-            min-height: 210px;
-            padding: 14px;
+            margin-top: 10px;
+            min-height: 138px;
+            padding: 12px;
             border-radius: 8px;
-            background: var(--surface-soft);
             border: 1px solid var(--line);
+            background: rgba(255,255,255,0.72);
+            color: var(--text);
             white-space: pre-wrap;
-            font-size: 0.94rem;
+            font-size: 0.9rem;
         }
 
         .alerts {
             display: grid;
             gap: 8px;
+            margin-top: 10px;
         }
 
         .alert-item {
             padding: 9px 10px;
-            border: 1px solid var(--line);
             border-radius: 8px;
-            background: #fbfcfd;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.72);
             color: var(--muted);
-            font-size: 0.86rem;
-        }
-
-        .lower {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(380px, 0.8fr);
-            gap: 16px;
-            margin-top: 16px;
+            font-size: 0.82rem;
         }
 
         .chart-wrap {
-            height: 290px;
+            height: 190px;
         }
 
         #trendCanvas {
@@ -453,114 +698,82 @@
             display: block;
             border-radius: 8px;
             border: 1px solid var(--line);
-            background: #fbfcfd;
-        }
-
-        .legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
-            margin-top: 12px;
-            color: var(--muted);
-            font-size: 0.82rem;
-        }
-
-        .legend span {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-        }
-
-        .swatch {
-            width: 14px;
-            height: 3px;
-            border-radius: 999px;
+            background: rgba(255,255,255,0.72);
         }
 
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 10px;
+            gap: 8px;
         }
 
-        .stat-box {
-            padding: 10px;
+        .stat {
+            padding: 9px;
             border-radius: 8px;
             border: 1px solid var(--line);
-            background: #fbfcfd;
+            background: rgba(255,255,255,0.72);
         }
 
-        .stat-box span {
+        .stat span {
             color: var(--muted);
-            font-size: 0.76rem;
-            font-weight: 780;
+            font-size: 0.72rem;
+            font-weight: 800;
         }
 
-        .stat-box strong {
+        .stat strong {
             display: block;
             margin-top: 3px;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
-        .debug {
-            margin-top: 16px;
-        }
-
-        details.section summary {
+        details summary {
             list-style: none;
             cursor: pointer;
         }
 
-        details.section summary::-webkit-details-marker {
+        details summary::-webkit-details-marker {
             display: none;
         }
 
         .log-list {
-            max-height: 300px;
+            max-height: 240px;
             overflow: auto;
-            border: 1px solid var(--line);
             border-radius: 8px;
-            background: #101820;
-            color: #dce7f2;
+            background: #3b342f;
+            color: #f8eee5;
             font-family: Consolas, "Cascadia Mono", monospace;
-            font-size: 0.78rem;
+            font-size: 0.74rem;
         }
 
         .log-row {
             display: grid;
-            grid-template-columns: 68px 54px minmax(0, 1fr);
+            grid-template-columns: 64px 48px minmax(0, 1fr);
             gap: 8px;
             padding: 8px 10px;
             border-bottom: 1px solid rgba(255,255,255,0.08);
         }
 
-        .log-row:last-child {
-            border-bottom: 0;
-        }
-
-        .log-level-ok { color: #8fe6b8; }
-        .log-level-warn { color: #ffd37a; }
-        .log-level-error { color: #ff9b93; }
-        .log-level-info { color: #9cc4ff; }
+        .log-row:last-child { border-bottom: 0; }
+        .log-level-ok { color: #b6e8ca; }
+        .log-level-warn { color: #ffe0a0; }
+        .log-level-error { color: #ffb7ad; }
+        .log-level-info { color: #b8d7ee; }
         .raw { overflow-wrap: anywhere; }
 
-        @media (max-width: 1100px) {
-            .hero,
-            .grid,
-            .lower {
-                grid-template-columns: 1fr;
+        @media (max-width: 900px) {
+            html,
+            body {
+                overflow: auto;
             }
 
-            .hero-stats,
-            .metric-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+            .stage {
+                min-height: auto;
+                padding: 18px;
+                gap: 22px;
             }
-        }
 
-        @media (max-width: 720px) {
-            .app {
-                width: min(100% - 20px, 1380px);
-                padding-top: 14px;
+            body.drawer-open .stage {
+                transform: none;
             }
 
             .topbar {
@@ -568,203 +781,194 @@
                 flex-direction: column;
             }
 
-            .toolbar {
+            .top-actions {
                 justify-content: flex-start;
             }
 
-            .hero-main {
-                padding: 18px;
+            .metric-grid,
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
-            .hero-stats,
+            .drawer {
+                width: min(460px, 100vw);
+            }
+        }
+
+        @media (max-width: 560px) {
             .metric-grid,
-            .side-grid,
             .stats-grid {
                 grid-template-columns: 1fr;
             }
 
-            .metric-value {
-                font-size: 2rem;
+            .companion {
+                width: 210px;
+                height: 160px;
+            }
+
+            .dialogue {
+                border-radius: 22px;
             }
         }
     </style>
 </head>
 <body>
 <main class="app">
-    <header class="topbar">
-        <div class="brand">
-            <h1>宿舍环境检测系统</h1>
-            <p>STM32 实时采集 · 串口通信 · AI 环境分析</p>
-        </div>
-        <div class="toolbar">
-            <button class="btn" id="refreshBtn" type="button">刷新</button>
-            <button class="btn primary" id="analyzeBtn" type="button">分析</button>
-        </div>
-    </header>
+    <section class="stage" id="stage">
+        <header class="topbar">
+            <div class="brand">
+                <h1>软眠眠宿舍环境伴侣</h1>
+                <p>今天也在安静守着你的宿舍。</p>
+            </div>
+            <div class="top-actions">
+                <span class="pill offline" id="onlinePill">等待数据</span>
+                <span class="pill offline" id="framePill">无完整帧</span>
+                <button class="btn primary" id="drawerBtn" type="button">数据面板</button>
+            </div>
+        </header>
 
-    <section class="hero">
-        <div class="hero-main">
-            <div>
-                <div class="hero-kicker">
-                    <span class="pill offline" id="onlinePill">等待数据</span>
-                    <span class="pill offline" id="framePill">无完整帧</span>
+        <div class="center">
+            <section class="companion-area">
+                <div class="mood-line">
                     <span class="pill offline" id="qualityPill">未分析</span>
+                    <span class="pill offline" id="serialPill">串口未打开</span>
                 </div>
-                <h2 id="heroTitle">正在等待宿舍环境数据</h2>
-                <p class="hero-sub" id="heroSub">系统会根据温湿度、空气质量、人体检测和噪声数据判断当前宿舍环境。</p>
-            </div>
-            <div class="hero-stats">
-                <div class="hero-stat"><span>温度</span><strong id="hero-temperature">--</strong></div>
-                <div class="hero-stat"><span>湿度</span><strong id="hero-humidity">--</strong></div>
-                <div class="hero-stat"><span>空气质量</span><strong id="hero-mq135_adc">--</strong></div>
-                <div class="hero-stat"><span>噪声</span><strong id="hero-sound_db">--</strong></div>
-            </div>
-        </div>
-        <aside class="hero-side">
-            <div class="system-score">
-                <div>
-                    <span class="score-label">综合状态</span>
-                    <div class="score-value" id="scoreText">未连接</div>
+
+                <div class="companion-wrap">
+                    <div class="companion-shadow"></div>
+                    <div class="companion offline" id="companion" title="轻轻点一下">
+                        <div class="sleep-mark"><span>Z</span><span>z</span></div>
+                        <span class="arm left"></span>
+                        <span class="arm right"></span>
+                        <div class="face">
+                            <span class="eye left"></span>
+                            <span class="eye right"></span>
+                            <span class="mouth"></span>
+                        </div>
+                    </div>
                 </div>
-                <div class="status-dot offline" id="scoreDot">--</div>
-            </div>
-            <div class="side-grid">
-                <div class="side-item"><span>串口</span><strong id="serialText">--</strong></div>
-                <div class="side-item"><span>最近帧</span><strong id="lastFrameText">--</strong></div>
-                <div class="side-item"><span>完整帧</span><strong id="completeFrameText">0</strong></div>
-                <div class="side-item"><span>解析失败</span><strong id="failedFrameText">0</strong></div>
-            </div>
-        </aside>
-    </section>
 
-    <section class="grid">
-        <div class="section">
-            <div class="section-head">
-                <h3>实时指标</h3>
-                <span class="pill offline" id="serialPill">串口未打开</span>
-            </div>
-            <div class="section-body">
-                <div class="metric-grid">
-                    <article class="metric missing" id="card-temperature">
-                        <div class="metric-top">
-                            <span class="metric-name">温度</span>
-                            <span class="pill missing" id="status-temperature">--</span>
-                        </div>
-                        <div class="metric-value"><span id="value-temperature">--</span><span class="metric-unit">°C</span></div>
-                        <div class="metric-detail" id="detail-temperature">等待数据</div>
-                    </article>
-
-                    <article class="metric missing" id="card-humidity">
-                        <div class="metric-top">
-                            <span class="metric-name">湿度</span>
-                            <span class="pill missing" id="status-humidity">--</span>
-                        </div>
-                        <div class="metric-value"><span id="value-humidity">--</span><span class="metric-unit">%</span></div>
-                        <div class="metric-detail" id="detail-humidity">等待数据</div>
-                    </article>
-
-                    <article class="metric missing" id="card-mq135_adc">
-                        <div class="metric-top">
-                            <span class="metric-name">空气质量</span>
-                            <span class="pill missing" id="status-mq135_adc">--</span>
-                        </div>
-                        <div class="metric-value"><span id="value-mq135_adc">--</span><span class="metric-unit">ADC</span></div>
-                        <div class="metric-detail" id="detail-mq135_adc">MQ135 数值越小空气质量越差</div>
-                    </article>
-
-                    <article class="metric missing" id="card-mq135_mv">
-                        <div class="metric-top">
-                            <span class="metric-name">MQ135 电压</span>
-                            <span class="pill missing" id="status-mq135_mv">--</span>
-                        </div>
-                        <div class="metric-value"><span id="value-mq135_mv">--</span><span class="metric-unit">mV</span></div>
-                        <div class="metric-detail" id="detail-mq135_mv">等待数据</div>
-                    </article>
-
-                    <article class="metric missing" id="card-motion">
-                        <div class="metric-top">
-                            <span class="metric-name">人体检测</span>
-                            <span class="pill missing" id="status-motion">--</span>
-                        </div>
-                        <div class="metric-value"><span id="value-motion">--</span></div>
-                        <div class="metric-detail" id="detail-motion">HCSR501：1 有人 / 0 无人</div>
-                    </article>
-
-                    <article class="metric missing" id="card-sound_db">
-                        <div class="metric-top">
-                            <span class="metric-name">声音分贝</span>
-                            <span class="pill missing" id="status-sound_db">--</span>
-                        </div>
-                        <div class="metric-value"><span id="value-sound_db">--</span><span class="metric-unit">dB</span></div>
-                        <div class="metric-detail" id="detail-sound_db">等待数据</div>
-                    </article>
+                <div class="dialogue" id="dialogueBox">
+                    <div class="dialogue-meta">
+                        <span class="companion-status" id="companionStance">等下位机上线</span>
+                        <span class="pill offline" id="sourcePill">本地规则</span>
+                    </div>
+                    <p class="dialogue-main" id="dialogueMain">我还在等下位机给我一点宿舍里的消息。</p>
+                    <p class="dialogue-sub" id="dialogueSub">连接成功后，我会根据环境数据说出当前宿舍是否舒适。</p>
+                    <div class="chat-divider"><span>和软眠眠的对话</span></div>
+                    <div class="chat-feed" id="chatFeed"></div>
+                    <form class="chat-form" id="chatForm">
+                        <input class="chat-input" id="chatInput" type="text" autocomplete="off" placeholder="直接和我说，比如：现在适合睡觉吗？">
+                        <button class="send-btn" id="sendBtn" type="submit" aria-label="发送消息">➜</button>
+                    </form>
                 </div>
-            </div>
-        </div>
-
-        <aside class="section">
-            <div class="section-head">
-                <h3>AI 环境分析</h3>
-                <span class="pill offline" id="analysisSource">待分析</span>
-            </div>
-            <div class="section-body analysis-card">
-                <div class="analysis-state" id="analysisStatus">本地规则已用于实时状态判断。</div>
-                <div class="analysis-text" id="analysisText">收到稳定数据后，可生成环境状态、风险提醒和处理建议。</div>
-                <div class="alerts" id="alertList"></div>
-            </div>
-        </aside>
-    </section>
-
-    <section class="lower">
-        <div class="section">
-            <div class="section-head">
-                <h3>趋势变化</h3>
-                <span class="pill ok" id="trendCount">0 帧</span>
-            </div>
-            <div class="section-body">
-                <div class="chart-wrap"><canvas id="trendCanvas"></canvas></div>
-                <div class="legend">
-                    <span><i class="swatch" style="background:#d45b43"></i>温度</span>
-                    <span><i class="swatch" style="background:#2563eb"></i>湿度</span>
-                    <span><i class="swatch" style="background:#8e5a00"></i>噪声</span>
-                    <span><i class="swatch" style="background:#16815d"></i>空气质量</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="section">
-            <div class="section-head">
-                <h3>通信统计</h3>
-                <span class="pill offline" id="debugPill">等待串口</span>
-            </div>
-            <div class="section-body">
-                <div class="stats-grid">
-                    <div class="stat-box"><span>接收帧</span><strong id="stat-received">0</strong></div>
-                    <div class="stat-box"><span>完整帧</span><strong id="stat-complete">0</strong></div>
-                    <div class="stat-box"><span>部分帧</span><strong id="stat-partial">0</strong></div>
-                    <div class="stat-box"><span>解析失败</span><strong id="stat-failed">0</strong></div>
-                    <div class="stat-box"><span>传感器错误</span><strong id="stat-sensor">0</strong></div>
-                    <div class="stat-box"><span>串口错误</span><strong id="stat-serial">0</strong></div>
-                </div>
-            </div>
+            </section>
         </div>
     </section>
 
-    <details class="section debug">
-        <summary class="section-head">
-            <h3>原始串口日志</h3>
-            <span class="pill ok" id="logCount">0 条</span>
-        </summary>
-        <div class="section-body">
-            <div class="log-list" id="logList">
-                <div class="log-row">
-                    <span>--:--:--</span>
-                    <span class="log-level-info">INFO</span>
-                    <span class="raw">等待后端接收 STM32 串口数据</span>
-                </div>
-            </div>
+    <aside class="drawer" id="drawer">
+        <div class="drawer-head">
+            <h2>环境数据与分析</h2>
+            <button class="btn" id="closeDrawerBtn" type="button">收起</button>
         </div>
-    </details>
+        <div class="drawer-body">
+            <section class="panel">
+                <div class="panel-head">
+                    <h3>实时指标</h3>
+                    <span class="pill offline" id="devicePill">未连接</span>
+                </div>
+                <div class="panel-body">
+                    <div class="metric-grid">
+                        <article class="metric-card" id="card-temperature">
+                            <div class="metric-top"><span class="metric-name">温度</span><span class="pill missing" id="status-temperature">--</span></div>
+                            <div class="metric-value"><span id="value-temperature">--</span> °C</div>
+                            <div class="metric-detail" id="detail-temperature">等待数据</div>
+                        </article>
+                        <article class="metric-card" id="card-humidity">
+                            <div class="metric-top"><span class="metric-name">湿度</span><span class="pill missing" id="status-humidity">--</span></div>
+                            <div class="metric-value"><span id="value-humidity">--</span> %</div>
+                            <div class="metric-detail" id="detail-humidity">等待数据</div>
+                        </article>
+                        <article class="metric-card" id="card-mq135_adc">
+                            <div class="metric-top"><span class="metric-name">空气质量</span><span class="pill missing" id="status-mq135_adc">--</span></div>
+                            <div class="metric-value"><span id="value-mq135_adc">--</span> ADC</div>
+                            <div class="metric-detail" id="detail-mq135_adc">MQ135 数值越小空气质量越差</div>
+                        </article>
+                        <article class="metric-card" id="card-mq135_mv">
+                            <div class="metric-top"><span class="metric-name">MQ135 电压</span><span class="pill missing" id="status-mq135_mv">--</span></div>
+                            <div class="metric-value"><span id="value-mq135_mv">--</span> mV</div>
+                            <div class="metric-detail" id="detail-mq135_mv">等待数据</div>
+                        </article>
+                        <article class="metric-card" id="card-motion">
+                            <div class="metric-top"><span class="metric-name">人体检测</span><span class="pill missing" id="status-motion">--</span></div>
+                            <div class="metric-value"><span id="value-motion">--</span></div>
+                            <div class="metric-detail" id="detail-motion">1 有人 / 0 无人</div>
+                        </article>
+                        <article class="metric-card" id="card-sound_db">
+                            <div class="metric-top"><span class="metric-name">声音分贝</span><span class="pill missing" id="status-sound_db">--</span></div>
+                            <div class="metric-value"><span id="value-sound_db">--</span> dB</div>
+                            <div class="metric-detail" id="detail-sound_db">等待数据</div>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head">
+                    <h3>角色分析</h3>
+                    <span class="pill offline" id="analysisSource">等待</span>
+                </div>
+                <div class="panel-body">
+                    <div class="analysis-state" id="analysisStatus">等待角色读数。</div>
+                    <div class="analysis-text" id="analysisText">软眠眠会根据当前数据自动整理状态、提醒和建议。</div>
+                    <div class="alerts" id="alertList"></div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head">
+                    <h3>趋势</h3>
+                    <span class="pill ok" id="trendCount">0 帧</span>
+                </div>
+                <div class="panel-body">
+                    <div class="chart-wrap"><canvas id="trendCanvas"></canvas></div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head">
+                    <h3>通信状态</h3>
+                    <span class="pill offline" id="debugPill">等待串口</span>
+                </div>
+                <div class="panel-body">
+                    <div class="stats-grid">
+                        <div class="stat"><span>接收帧</span><strong id="stat-received">0</strong></div>
+                        <div class="stat"><span>完整帧</span><strong id="stat-complete">0</strong></div>
+                        <div class="stat"><span>部分帧</span><strong id="stat-partial">0</strong></div>
+                        <div class="stat"><span>解析失败</span><strong id="stat-failed">0</strong></div>
+                        <div class="stat"><span>传感器错误</span><strong id="stat-sensor">0</strong></div>
+                        <div class="stat"><span>串口错误</span><strong id="stat-serial">0</strong></div>
+                    </div>
+                </div>
+            </section>
+
+            <details class="panel">
+                <summary class="panel-head">
+                    <h3>原始串口日志</h3>
+                    <span class="pill ok" id="logCount">0 条</span>
+                </summary>
+                <div class="panel-body">
+                    <div class="log-list" id="logList">
+                        <div class="log-row">
+                            <span>--:--:--</span>
+                            <span class="log-level-info">INFO</span>
+                            <span class="raw">等待后端接收 STM32 串口数据</span>
+                        </div>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </aside>
 </main>
 
 <script>
@@ -773,17 +977,18 @@ const API_BASE = location.protocol.startsWith('http')
     : 'http://localhost:5000/api';
 
 const metricFields = ['temperature', 'humidity', 'mq135_adc', 'mq135_mv', 'motion', 'sound_db'];
-const heroFields = ['temperature', 'humidity', 'mq135_adc', 'sound_db'];
 const trendSeries = [
-    { field: 'temperature', color: '#d45b43', label: '温度' },
-    { field: 'humidity', color: '#2563eb', label: '湿度' },
-    { field: 'sound_db', color: '#8e5a00', label: '噪声' },
-    { field: 'mq135_adc', color: '#16815d', label: '空气质量' },
+    { field: 'temperature', color: '#d96f5c' },
+    { field: 'humidity', color: '#7b9fbd' },
+    { field: 'sound_db', color: '#ad7a27' },
+    { field: 'mq135_adc', color: '#6f9b82' },
 ];
 
 let lastTimestamp = null;
 let trendBuffer = [];
 let lastState = null;
+let refreshInFlight = false;
+let chatBusy = false;
 
 function $(id) {
     return document.getElementById(id);
@@ -801,13 +1006,6 @@ function escapeHtml(value) {
 function setPill(el, level, text) {
     el.className = `pill ${level || 'offline'}`;
     el.textContent = text;
-}
-
-function setScore(level, text) {
-    const dot = $('scoreDot');
-    dot.className = `status-dot ${level || 'offline'}`;
-    dot.textContent = level === 'normal' ? 'OK' : (level === 'warning' ? '!' : '--');
-    $('scoreText').textContent = text;
 }
 
 function formatValue(field, value, withUnit = false) {
@@ -828,6 +1026,45 @@ function formatValue(field, value, withUnit = false) {
     return withUnit ? `${text}${units[field] || ''}` : text;
 }
 
+function nowTime() {
+    return new Date().toLocaleTimeString('zh-CN', {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    });
+}
+
+function appendChatMessage(role, content, time = nowTime()) {
+    const feed = $('chatFeed');
+    const item = document.createElement('div');
+    item.className = `chat-message ${role}`;
+    item.textContent = content;
+
+    const stamp = document.createElement('span');
+    stamp.className = 'chat-time';
+    stamp.textContent = time;
+    item.appendChild(stamp);
+
+    feed.appendChild(item);
+    while (feed.children.length > 18) {
+        feed.removeChild(feed.firstElementChild);
+    }
+    feed.scrollTop = feed.scrollHeight;
+}
+
+function updateDialogue(state, companion = {}) {
+    const message = companion.message || (state?.online ? '我正在看宿舍里的状态。' : '我还在等下位机给我一点宿舍里的消息。');
+    const detail = companion.detail || (state?.online ? '数据刷新后，我会自己判断是否需要提醒你。' : '连接成功后，我会根据环境数据说出当前宿舍是否舒适。');
+    const sourceText = companion.source === 'ai' ? 'AI 生成' : '本地规则';
+    const sourceLevel = companion.source === 'ai' ? 'ok' : (state?.online ? 'normal' : 'offline');
+
+    $('dialogueMain').textContent = message;
+    $('dialogueSub').textContent = detail;
+    $('companionStance').textContent = companion.stance || (state?.online ? '观察宿舍中' : '等下位机上线');
+    setPill($('sourcePill'), sourceLevel, sourceText);
+}
+
 function updateMetric(field, item) {
     const card = $(`card-${field}`);
     const valueEl = $(`value-${field}`);
@@ -836,28 +1073,19 @@ function updateMetric(field, item) {
     if (!card || !valueEl || !statusEl || !detailEl) return;
 
     const level = item?.level || 'missing';
-    card.className = `metric ${level}`;
+    card.dataset.level = level;
     valueEl.textContent = formatValue(field, item?.value);
     setPill(statusEl, level, item?.text || '--');
     detailEl.textContent = item?.detail || (item?.stale ? '显示上次有效值' : '数据正常');
 }
 
-function updateHero(state, qualityFields) {
-    const quality = state.quality || {};
-    const summary = quality.summary || '等待数据';
-    const level = state.online ? (quality.overall_level || 'offline') : 'offline';
-
-    $('heroTitle').textContent = state.online ? summary : '正在等待宿舍环境数据';
-    $('heroSub').textContent = state.online
-        ? `最后一帧 ${state.last_update_str}，距离现在 ${state.age_seconds}s。`
-        : '请确认 STM32 已连接、串口号正确，并保持下位机持续发送 JSON 单行帧。';
-
-    heroFields.forEach(field => {
-        const item = qualityFields[field] || {};
-        $(`hero-${field}`).textContent = formatValue(field, item.value, true);
-    });
-
-    setScore(level, state.online ? summary : '未连接');
+function updateCompanion(level, companion = {}) {
+    const pet = $('companion');
+    const emotion = companion.emotion || level || 'offline';
+    const action = chatBusy ? 'speaking' : (companion.action || 'breathing');
+    pet.className = ['companion', level || 'offline', emotion, action]
+        .filter(Boolean)
+        .join(' ');
 }
 
 function updateDashboard(state) {
@@ -867,19 +1095,22 @@ function updateDashboard(state) {
     const quality = state.quality || {};
     const qualityFields = quality.fields || {};
     const frame = state.frame || {};
+    const companion = state.companion || {};
+    const level = state.online ? (quality.overall_level || 'offline') : 'offline';
 
     setPill($('onlinePill'), state.online ? 'ok' : 'offline', state.online ? '设备在线' : '设备离线');
     setPill($('framePill'), frame.complete ? 'ok' : (frame.errors?.length ? 'warning' : 'offline'), frame.complete ? '完整帧' : (frame.errors?.length ? '部分帧' : '无数据'));
     setPill($('qualityPill'), state.online ? quality.overall_level : 'offline', state.online ? quality.summary : '未连接');
-    setPill($('serialPill'), serial.connected ? 'ok' : 'offline', serial.connected ? '串口已打开' : '串口未打开');
+    setPill($('serialPill'), serial.connected ? 'ok' : 'offline', serial.connected ? `${serial.port} @ ${serial.baud_rate}` : '串口未打开');
+    setPill($('devicePill'), state.online ? 'ok' : 'offline', state.online ? '实时在线' : '未连接');
     setPill($('debugPill'), stats.parse_failed_frames || stats.serial_errors ? 'warning' : (state.online ? 'ok' : 'offline'), state.online ? '通信正常' : '等待串口');
 
-    $('serialText').textContent = `${serial.port || '--'} @ ${serial.baud_rate || '--'}`;
-    $('lastFrameText').textContent = state.age_seconds === null ? '--' : `${state.age_seconds}s 前`;
-    $('completeFrameText').textContent = stats.complete_frames ?? 0;
-    $('failedFrameText').textContent = stats.parse_failed_frames ?? 0;
+    updateCompanion(level, companion);
+    updateDialogue(state, companion);
+    setPill($('analysisSource'), companion.source === 'ai' ? 'ok' : (state.online ? 'normal' : 'offline'), companion.source === 'ai' ? 'AI' : '规则');
+    $('analysisStatus').textContent = companion.summary || quality.summary || '等待角色分析';
+    $('analysisText').textContent = companion.suggestion || companion.detail || '等待传感器数据刷新。';
 
-    updateHero(state, qualityFields);
     metricFields.forEach(field => updateMetric(field, qualityFields[field]));
 
     $('stat-received').textContent = stats.received_frames ?? 0;
@@ -973,25 +1204,25 @@ function drawTrend() {
     const { ctx, width, height } = resizeCanvas(canvas);
     ctx.clearRect(0, 0, width, height);
 
-    const pad = { left: 36, right: 18, top: 18, bottom: 30 };
+    const pad = { left: 26, right: 12, top: 14, bottom: 24 };
     const innerW = width - pad.left - pad.right;
     const innerH = height - pad.top - pad.bottom;
 
-    ctx.strokeStyle = '#d9e1e8';
+    ctx.strokeStyle = 'rgba(119,101,86,0.18)';
     ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-        const y = pad.top + innerH * i / 4;
+    for (let i = 0; i <= 3; i++) {
+        const y = pad.top + innerH * i / 3;
         ctx.beginPath();
         ctx.moveTo(pad.left, y);
         ctx.lineTo(width - pad.right, y);
         ctx.stroke();
     }
 
-    ctx.fillStyle = '#667585';
-    ctx.font = '12px Segoe UI, Microsoft YaHei, sans-serif';
+    ctx.fillStyle = '#8b7f74';
+    ctx.font = '11px Microsoft YaHei, sans-serif';
     if (trendBuffer.length < 2) {
         ctx.textAlign = 'center';
-        ctx.fillText('等待至少 2 帧数据后绘制趋势', width / 2, height / 2);
+        ctx.fillText('等待数据形成趋势', width / 2, height / 2);
         return;
     }
 
@@ -1024,61 +1255,96 @@ function drawTrend() {
         });
         ctx.stroke();
     });
+}
 
-    const first = trendBuffer[0]?.time || '';
-    const last = trendBuffer[trendBuffer.length - 1]?.time || '';
-    ctx.fillStyle = '#667585';
-    ctx.textAlign = 'left';
-    ctx.fillText(first, pad.left, height - 10);
-    ctx.textAlign = 'right';
-    ctx.fillText(last, width - pad.right, height - 10);
+function openDrawer() {
+    document.body.classList.add('drawer-open');
+}
+
+function closeDrawer() {
+    document.body.classList.remove('drawer-open');
 }
 
 async function refreshData() {
+    if (refreshInFlight) return;
+    refreshInFlight = true;
     try {
-        const resp = await fetch(`${API_BASE}/sensor`, { cache: 'no-store' });
+        const resp = await fetch(`${API_BASE}/companion/state`, { cache: 'no-store' });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const state = await resp.json();
         updateDashboard(state);
     } catch (err) {
         setPill($('onlinePill'), 'offline', '后端不可达');
-        setScore('offline', '后端不可达');
-        $('heroTitle').textContent = '无法连接上位机后端';
-        $('heroSub').textContent = err.message;
-        $('serialText').textContent = 'Flask 未响应';
+        updateCompanion('offline', { emotion: 'offline', action: 'sleepy' });
+        $('dialogueMain').textContent = '我暂时联系不上上位机后端。';
+        $('dialogueSub').textContent = err.message;
+    } finally {
+        refreshInFlight = false;
     }
 }
 
-async function analyze() {
-    const btn = $('analyzeBtn');
-    btn.disabled = true;
-    setPill($('analysisSource'), 'offline', '分析中');
-    $('analysisStatus').textContent = '正在生成环境分析。';
-    $('analysisText').textContent = '请稍候。';
+async function sendChat(event) {
+    event.preventDefault();
+    if (chatBusy) return;
+
+    const input = $('chatInput');
+    const sendBtn = $('sendBtn');
+    const message = input.value.trim();
+    if (!message) return;
+
+    appendChatMessage('user', message);
+    input.value = '';
+    chatBusy = true;
+    sendBtn.disabled = true;
+    updateCompanion(lastState?.quality?.overall_level || 'offline', {
+        emotion: 'concerned',
+        action: 'speaking',
+    });
 
     try {
-        const resp = await fetch(`${API_BASE}/ai-analyze`, {
+        const resp = await fetch(`${API_BASE}/companion/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(lastState?.data || {}),
+            body: JSON.stringify({ message }),
         });
         const result = await resp.json();
-        const source = result.source === 'ai' ? 'AI' : (result.source === 'rule' ? '本地规则' : '无数据');
-        setPill($('analysisSource'), result.ok ? 'ok' : 'warning', source);
-        $('analysisStatus').textContent = result.status || source;
-        $('analysisText').textContent = result.suggestion || '没有返回分析内容。';
+        if (!resp.ok || !result.ok) throw new Error(result.reply || `HTTP ${resp.status}`);
+
+        appendChatMessage('assistant', result.reply);
+        $('dialogueMain').textContent = result.reply;
+        $('dialogueSub').textContent = result.source === 'ai'
+            ? '这是我结合当前传感器数据生成的回答。'
+            : '这是我根据本地环境规则给出的回答。';
+        setPill($('sourcePill'), result.source === 'ai' ? 'ok' : 'normal', result.source === 'ai' ? 'AI 生成' : '本地规则');
     } catch (err) {
-        setPill($('analysisSource'), 'error', '失败');
-        $('analysisStatus').textContent = '分析失败';
-        $('analysisText').textContent = `无法连接分析接口：${err.message}`;
+        const fallback = `我刚才没能把这句话处理好：${err.message}`;
+        appendChatMessage('assistant', fallback);
+        $('dialogueMain').textContent = fallback;
+        $('dialogueSub').textContent = '可以稍后再问一次，或者先确认后端服务是否正常。';
     } finally {
-        btn.disabled = false;
+        chatBusy = false;
+        sendBtn.disabled = false;
+        updateCompanion(lastState?.quality?.overall_level || 'offline', lastState?.companion || {});
+        input.focus();
     }
 }
 
-$('refreshBtn').addEventListener('click', refreshData);
-$('analyzeBtn').addEventListener('click', analyze);
+$('drawerBtn').addEventListener('click', openDrawer);
+$('closeDrawerBtn').addEventListener('click', closeDrawer);
+$('chatForm').addEventListener('submit', sendChat);
+$('companion').addEventListener('click', () => {
+    const pet = $('companion');
+    pet.classList.remove('poked');
+    void pet.offsetWidth;
+    pet.classList.add('poked');
+    $('chatInput').focus();
+    $('dialogueMain').textContent = '我在听，你可以直接问我现在宿舍适不适合休息。';
+    $('dialogueSub').textContent = lastState?.companion?.detail || '我会把实时传感器数据一起考虑进去。';
+});
 window.addEventListener('resize', drawTrend);
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeDrawer();
+});
 
 refreshData();
 setInterval(refreshData, 1000);
