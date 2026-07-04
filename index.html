@@ -155,7 +155,7 @@
             min-height: 0;
             display: grid;
             place-items: center;
-            padding: 26px 0;
+            padding: 12px 0;
         }
 
         .companion-area {
@@ -169,285 +169,196 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
-            margin-bottom: 22px;
+            margin-bottom: 10px;
         }
 
+        /* ── Mochi companion ── */
         .companion-wrap {
             position: relative;
             width: min(330px, 70vw);
-            aspect-ratio: 1.25 / 1;
+            aspect-ratio: 1 / 1;
             display: grid;
             place-items: center;
         }
 
         .companion-shadow {
             position: absolute;
-            bottom: 14px;
-            width: 76%;
-            height: 24px;
+            bottom: 8%;
+            width: 70%;
+            height: 12%;
             border-radius: 50%;
-            background: rgba(139,111,92,0.14);
-            filter: blur(1px);
+            background: rgba(180, 140, 140, 0.22);
+            filter: blur(4px);
+            transition: transform 0.3s;
         }
 
         .companion {
-            width: 236px;
-            height: 178px;
+            width: 200px;
+            height: 168px;
             position: relative;
-            border-radius: 48% 48% 42% 42%;
-            background: #fffdf8;
-            border: 2px solid rgba(255,255,255,0.9);
+            border-radius: 120px 120px 40px 40px;
+            background: radial-gradient(ellipse at 45% 30%, #ffd6dc 0%, #ffc0cb 50%, #f0a0a8 100%);
             box-shadow:
-                inset 0 -10px 22px rgba(226,170,148,0.13),
-                0 26px 55px rgba(153,116,92,0.18);
+                inset 0 -18px 30px rgba(200, 130, 140, 0.25),
+                0 20px 50px rgba(180, 120, 130, 0.25),
+                0 4px 12px rgba(0,0,0,0.06);
             cursor: pointer;
-            transform-origin: center 78%;
-            animation: breathe 3.2s ease-in-out infinite;
+            transform-origin: center 85%;
+            animation: mochi-breathe 3.6s ease-in-out infinite;
+            transition: background 0.8s, box-shadow 0.8s;
         }
 
-        .companion::before,
-        .companion::after {
-            content: "";
-            position: absolute;
-            top: 30px;
-            width: 46px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--peach-soft);
-            opacity: 0.78;
-        }
-
-        .companion::before { left: 33px; }
-        .companion::after { right: 33px; }
-
-        .face {
+        .mochi-face {
             position: absolute;
             inset: 0;
+            pointer-events: none;
         }
 
         .eye {
             position: absolute;
-            top: 78px;
-            width: 35px;
+            top: 38%;
+            width: 14px;
+            height: 26px;
+            background: #1a1a1a;
+            border-radius: 7px;
+            transition: transform 0.05s linear, height 0.12s ease;
+        }
+
+        .eye.left  { left: 32%; }
+        .eye.right { right: 32%; }
+
+        .blush {
+            position: absolute;
+            top: 56%;
+            width: 20px;
             height: 14px;
-            border-bottom: 4px solid #64564d;
-            border-radius: 0 0 30px 30px;
-        }
-
-        .eye.left { left: 65px; }
-        .eye.right { right: 65px; }
-
-        .mouth {
-            position: absolute;
-            left: 50%;
-            top: 106px;
-            width: 26px;
-            height: 14px;
-            border-bottom: 3px solid #78685c;
-            border-radius: 0 0 20px 20px;
-            transform: translateX(-50%);
-        }
-
-        .arm {
-            position: absolute;
-            top: 104px;
-            width: 54px;
-            height: 18px;
-            border-radius: 999px;
-            background: #fffdf8;
-            border: 1px solid rgba(119, 101, 86, 0.12);
-            box-shadow: 0 8px 18px rgba(153,116,92,0.08);
-            z-index: -1;
-            transform-origin: center;
-        }
-
-        .arm.left {
-            left: -34px;
-            transform: rotate(-14deg);
-        }
-
-        .arm.right {
-            right: -34px;
-            transform: rotate(14deg);
-        }
-
-        .sleep-mark {
-            position: absolute;
-            right: 8px;
-            top: -32px;
-            display: grid;
-            gap: 2px;
-            color: var(--plum);
-            font-weight: 900;
-            opacity: 0.55;
-            animation: floatText 2.7s ease-in-out infinite;
-        }
-
-        .sleep-mark span:nth-child(1) { font-size: 1.25rem; }
-        .sleep-mark span:nth-child(2) { font-size: 0.95rem; transform: translateX(15px); }
-
-        .companion:not(.offline) .sleep-mark {
-            opacity: 0;
-        }
-
-        .companion.cozy .mouth,
-        .companion.normal .mouth {
-            width: 34px;
-            height: 18px;
-            border-bottom-width: 4px;
-        }
-
-        .companion.concerned .eye.left,
-        .companion.warning .eye.left {
-            transform: rotate(8deg);
-        }
-
-        .companion.concerned .eye.right,
-        .companion.warning .eye.right {
-            transform: rotate(-8deg);
-        }
-
-        .companion.concerned .mouth,
-        .companion.warning .mouth {
-            width: 22px;
-            height: 9px;
-            top: 111px;
-            border-bottom-color: #9a7653;
-        }
-
-        .companion.alert .eye,
-        .companion.critical .eye {
-            top: 73px;
-            width: 22px;
-            height: 22px;
-            border: 0;
+            background: #ff8570;
             border-radius: 50%;
-            background: #6b5549;
+            opacity: 0.52;
+            filter: blur(2px);
+            transition: transform 0.05s linear, opacity 0.5s;
         }
 
-        .companion.alert .mouth,
-        .companion.critical .mouth {
-            top: 105px;
-            width: 24px;
-            height: 22px;
-            border: 3px solid #9b5a4f;
-            border-radius: 50%;
-            background: rgba(247, 222, 217, 0.62);
-        }
+        .blush.left  { left: 26%; }
+        .blush.right { right: 26%; }
 
-        .companion.thinking .arm.right {
-            animation: softWave 1.8s ease-in-out infinite;
+        /* ── Emotion overrides ── */
+        .companion.offline {
+            background: radial-gradient(ellipse at 45% 30%, #e8e0e2 0%, #d5ccce 50%, #c0b8ba 100%);
+            box-shadow: inset 0 -18px 30px rgba(150,140,140,0.2), 0 20px 50px rgba(150,140,140,0.15);
         }
+        .companion.offline .eye { height: 6px; border-radius: 3px; }
+        .companion.offline .blush { opacity: 0.15; }
 
-        .companion.alerting {
-            animation: alertWiggle 0.82s ease-in-out infinite;
+        .companion.warning,
+        .companion.concerned {
+            background: radial-gradient(ellipse at 45% 30%, #ffe0d0 0%, #ffccb0 50%, #f0b098 100%);
         }
-
-        .companion.speaking .mouth {
-            animation: speakMouth 0.52s ease-in-out infinite;
-        }
-
-        .companion.warning {
-            background: #fff8ec;
-            box-shadow:
-                inset 0 -10px 24px rgba(173,122,39,0.14),
-                0 26px 55px rgba(153,116,92,0.18);
-        }
+        .companion.warning .eye,
+        .companion.concerned .eye { height: 30px; width: 15px; border-radius: 8px; }
+        .companion.warning .blush,
+        .companion.concerned .blush { opacity: 0.7; background: #ff6530; }
 
         .companion.critical,
-        .companion.missing,
-        .companion.offline {
-            background: #fff6f3;
-            box-shadow:
-                inset 0 -10px 24px rgba(183,91,79,0.14),
-                0 26px 55px rgba(153,116,92,0.18);
+        .companion.alert {
+            background: radial-gradient(ellipse at 45% 30%, #ffe8e0 0%, #ffc8b8 50%, #f09080 100%);
+            animation: mochi-breathe 1.8s ease-in-out infinite;
+        }
+        .companion.critical .eye,
+        .companion.alert .eye { height: 32px; width: 16px; border-radius: 8px; background: #2a0500; }
+        .companion.critical .blush,
+        .companion.alert .blush { opacity: 0.85; background: #e04030; filter: blur(3px); }
+
+        .companion.cozy .blush,
+        .companion.normal .blush { opacity: 0.5; }
+
+        /* ── Animations ── */
+        @keyframes mochi-breathe {
+            0%, 100% { transform: scaleX(1) scaleY(1); }
+            50% { transform: scaleX(1.018) scaleY(0.976); }
         }
 
         .companion.poked {
-            animation: poke 0.46s ease-out;
+            animation: mochi-poke 0.55s cubic-bezier(.22,.8,.24,1);
         }
 
-        @keyframes breathe {
-            0%, 100% { transform: scaleX(1) scaleY(1) translateY(0); }
-            50% { transform: scaleX(1.025) scaleY(0.965) translateY(5px); }
-        }
-
-        @keyframes floatText {
-            0% { transform: translateY(0); opacity: 0.26; }
-            50% { transform: translateY(-12px); opacity: 0.68; }
-            100% { transform: translateY(-22px); opacity: 0.08; }
-        }
-
-        @keyframes poke {
-            0% { transform: scale(1); }
-            30% { transform: scaleX(0.92) scaleY(1.12) translateY(-2px); }
-            62% { transform: scaleX(1.06) scaleY(0.94) translateY(7px); }
+        @keyframes mochi-poke {
+            0%   { transform: scale(1); }
+            25%  { transform: scaleX(1.15) scaleY(0.78); }
+            45%  { transform: scaleX(0.92) scaleY(1.12); }
+            65%  { transform: scaleX(1.04) scaleY(0.95); }
+            80%  { transform: scaleX(0.98) scaleY(1.03); }
             100% { transform: scale(1); }
         }
 
-        @keyframes softWave {
-            0%, 100% { transform: rotate(14deg) translateY(0); }
-            50% { transform: rotate(-8deg) translateY(-8px); }
-        }
-
-        @keyframes alertWiggle {
-            0%, 100% { transform: rotate(0deg) translateY(0); }
-            25% { transform: rotate(-2deg) translateY(-2px); }
-            75% { transform: rotate(2deg) translateY(-2px); }
-        }
-
-        @keyframes speakMouth {
-            0%, 100% { height: 9px; width: 24px; }
-            50% { height: 20px; width: 30px; border-radius: 50%; }
+        .companion.blinking .eye {
+            height: 2px;
+            transition: height 0.06s ease;
         }
 
         .dialogue {
-            width: min(680px, 100%);
-            margin-top: 26px;
-            padding: 18px;
-            border-radius: 18px;
+            width: min(620px, 100%);
+            height: 310px;
+            margin-top: 16px;
+            padding: 14px 16px;
+            border-radius: 16px;
             background: rgba(255,255,255,0.72);
             border: 1px solid rgba(255,255,255,0.88);
             box-shadow: var(--shadow);
             backdrop-filter: blur(14px);
             text-align: left;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         .dialogue-meta {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 12px;
+            gap: 8px;
+            margin-bottom: 6px;
+            flex-shrink: 0;
         }
 
         .companion-status {
             color: var(--muted);
-            font-size: 0.82rem;
+            font-size: 0.78rem;
             font-weight: 850;
         }
 
         .dialogue-main {
             margin: 0;
-            font-size: clamp(1.08rem, 2.4vw, 1.45rem);
+            font-size: 1rem;
             font-weight: 760;
             color: var(--text);
+            min-height: 1.5em;
+            max-height: 3em;
+            line-height: 1.4;
+            overflow: hidden;
+            flex-shrink: 0;
         }
 
         .dialogue-sub {
-            margin: 8px 0 0;
+            margin: 2px 0 0;
             color: var(--muted);
-            font-size: 0.92rem;
+            font-size: 0.82rem;
+            min-height: 1.3em;
+            max-height: 2.6em;
+            line-height: 1.3;
+            overflow: hidden;
+            flex-shrink: 0;
         }
 
         .chat-feed {
-            margin-top: 10px;
+            margin-top: 8px;
             display: grid;
-            gap: 10px;
-            max-height: 190px;
-            overflow: auto;
+            gap: 6px;
+            height: 110px;
+            overflow-y: auto;
+            overflow-x: hidden;
             padding-right: 2px;
         }
 
@@ -471,11 +382,11 @@
 
         .chat-message {
             width: fit-content;
-            max-width: min(92%, 560px);
-            padding: 10px 12px;
+            max-width: min(92%, 500px);
+            padding: 7px 10px;
             border-radius: 8px;
-            line-height: 1.55;
-            font-size: 0.92rem;
+            line-height: 1.45;
+            font-size: 0.85rem;
             box-shadow: 0 8px 20px rgba(108, 85, 68, 0.07);
             overflow-wrap: anywhere;
         }
@@ -501,22 +412,23 @@
         }
 
         .chat-form {
-            margin-top: 14px;
+            margin-top: 8px;
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 44px;
-            gap: 8px;
+            grid-template-columns: minmax(0, 1fr) 38px;
+            gap: 6px;
         }
 
         .chat-input {
-            min-height: 44px;
+            min-height: 36px;
             width: 100%;
             border: 1px solid var(--line);
             border-radius: 8px;
             background: rgba(255,255,255,0.82);
             color: var(--text);
-            padding: 0 13px;
+            padding: 0 10px;
             outline: none;
             font: inherit;
+            font-size: 0.9rem;
         }
 
         .chat-input:focus {
@@ -525,16 +437,16 @@
         }
 
         .send-btn {
-            width: 44px;
-            height: 44px;
+            width: 36px;
+            height: 36px;
             border: 0;
             border-radius: 8px;
             background: var(--peach);
             color: #ffffff;
             cursor: pointer;
-            font-size: 1.18rem;
+            font-size: 1rem;
             font-weight: 900;
-            box-shadow: 0 9px 20px rgba(223,170,148,0.28);
+            box-shadow: 0 6px 16px rgba(223,170,148,0.28);
         }
 
         .send-btn:disabled {
@@ -691,6 +603,9 @@
         .memory-list {
             display: grid;
             gap: 6px;
+            height: 130px;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .memory-item {
@@ -704,6 +619,42 @@
 
         .memory-item::before {
             content: "🌸 ";
+        }
+
+        .conv-list {
+            display: grid;
+            gap: 4px;
+            height: 200px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .conv-item {
+            padding: 7px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .conv-item.user {
+            background: rgba(228, 240, 231, 0.5);
+            border: 1px solid rgba(111,155,130,0.14);
+            text-align: right;
+            color: var(--text);
+        }
+
+        .conv-item.assistant {
+            background: rgba(255,250,244,0.7);
+            border: 1px solid rgba(223,170,148,0.18);
+            text-align: left;
+            color: var(--muted);
+        }
+
+        .conv-time {
+            display: block;
+            font-size: 0.65rem;
+            color: var(--muted);
+            margin-top: 2px;
         }
 
         .chart-wrap {
@@ -854,14 +805,12 @@
 
                 <div class="companion-wrap">
                     <div class="companion-shadow"></div>
-                    <div class="companion offline" id="companion" title="轻轻点一下">
-                        <div class="sleep-mark"><span>Z</span><span>z</span></div>
-                        <span class="arm left"></span>
-                        <span class="arm right"></span>
-                        <div class="face">
-                            <span class="eye left"></span>
-                            <span class="eye right"></span>
-                            <span class="mouth"></span>
+                    <div class="companion offline" id="companion" title="轻轻戳我">
+                        <div class="mochi-face" id="mochiFace">
+                            <div class="eye left" id="eyeLeft"></div>
+                            <div class="eye right" id="eyeRight"></div>
+                            <div class="blush left" id="blushLeft"></div>
+                            <div class="blush right" id="blushRight"></div>
                         </div>
                     </div>
                 </div>
@@ -951,6 +900,18 @@
                 <div class="panel-body">
                     <div class="memory-list" id="memoryList">
                         <div class="alert-item">还没有记住关于你的事情，多和她聊聊天吧。</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-head">
+                    <h3>对话记录</h3>
+                    <span class="pill ok" id="convCount">0 条</span>
+                </div>
+                <div class="panel-body">
+                    <div class="conv-list" id="convList">
+                        <div class="alert-item">还没有对话记录，先和软眠眠聊聊天吧。</div>
                     </div>
                 </div>
             </section>
@@ -1112,11 +1073,70 @@ function updateMetric(field, item) {
 function updateCompanion(level, companion = {}) {
     const pet = $('companion');
     const emotion = companion.emotion || level || 'offline';
-    const action = chatBusy ? 'speaking' : (companion.action || 'breathing');
-    pet.className = ['companion', level || 'offline', emotion, action]
-        .filter(Boolean)
-        .join(' ');
+    // Map companion states to mochi visual classes
+    const cssClass = emotion || level || 'offline';
+    pet.className = ['companion', cssClass].filter(Boolean).join(' ');
+    // Store emotion for mouse-tracking context
+    pet.dataset.emotion = emotion;
 }
+
+// ── Mochi animations: blinking, mouse tracking, poke ──
+(function initMochi() {
+    const pet = $('companion');
+    const eyes = [$('eyeLeft'), $('eyeRight')];
+    const blushes = [$('blushLeft'), $('blushRight')];
+    const shadow = document.querySelector('.companion-shadow');
+
+    // Random blink
+    function scheduleBlink() {
+        const delay = 1800 + Math.random() * 5000;
+        setTimeout(() => {
+            pet.classList.add('blinking');
+            setTimeout(() => pet.classList.remove('blinking'), 120);
+            scheduleBlink();
+        }, delay);
+    }
+    scheduleBlink();
+
+    // Mouse follow — parallax on eyes + blush
+    let mouseX = 0.5, mouseY = 0.5; // normalized [0,1]
+    let targetX = 0.5, targetY = 0.5;
+
+    document.addEventListener('mousemove', e => {
+        const rect = pet.getBoundingClientRect();
+        targetX = (e.clientX - rect.left) / rect.width;
+        targetY = (e.clientY - rect.top) / rect.height;
+    });
+
+    function animateFollow() {
+        // Smooth interpolation
+        mouseX += (targetX - mouseX) * 0.08;
+        mouseY += (targetY - mouseY) * 0.08;
+
+        const dx = (mouseX - 0.5) * 10; // ±5px max
+        const dy = (mouseY - 0.5) * 8;  // ±4px max
+
+        eyes.forEach(el => { el.style.transform = `translate(${dx}px, ${dy}px)`; });
+        blushes.forEach(el => { el.style.transform = `translate(${dx * 0.8}px, ${dy * 0.7}px)`; });
+        if (shadow) {
+            shadow.style.transform = `translateX(${-dx * 0.6}px) scale(${1 - Math.abs(dx) * 0.008})`;
+        }
+
+        requestAnimationFrame(animateFollow);
+    }
+    requestAnimationFrame(animateFollow);
+
+    // Poke — squash and stretch on click
+    pet.addEventListener('click', () => {
+        pet.classList.remove('poked');
+        void pet.offsetWidth;
+        pet.classList.add('poked');
+        // Also focus chat
+        $('chatInput').focus();
+        $('dialogueMain').textContent = '我在听，你可以直接问我现在宿舍适不适合休息。';
+        $('dialogueSub').textContent = lastState?.companion?.detail || '我会把实时传感器数据一起考虑进去。';
+    });
+})();
 
 function updateDashboard(state) {
     lastState = state;
@@ -1152,6 +1172,7 @@ function updateDashboard(state) {
 
     renderAlerts(quality.alerts || []);
     renderLogs(state.recent_log || []);
+    renderConversation(state.conversation || []);
     pushTrend(state);
     drawTrend();
 }
@@ -1306,7 +1327,7 @@ async function refreshData() {
         updateDashboard(state);
     } catch (err) {
         setPill($('onlinePill'), 'offline', '后端不可达');
-        updateCompanion('offline', { emotion: 'offline', action: 'sleepy' });
+        updateCompanion('offline', { emotion: 'offline' });
         $('dialogueMain').textContent = '我暂时联系不上上位机后端。';
         $('dialogueSub').textContent = err.message;
     } finally {
@@ -1329,7 +1350,6 @@ async function sendChat(event) {
     sendBtn.disabled = true;
     updateCompanion(lastState?.quality?.overall_level || 'offline', {
         emotion: 'concerned',
-        action: 'speaking',
     });
 
     try {
@@ -1363,15 +1383,6 @@ async function sendChat(event) {
 $('drawerBtn').addEventListener('click', openDrawer);
 $('closeDrawerBtn').addEventListener('click', closeDrawer);
 $('chatForm').addEventListener('submit', sendChat);
-$('companion').addEventListener('click', () => {
-    const pet = $('companion');
-    pet.classList.remove('poked');
-    void pet.offsetWidth;
-    pet.classList.add('poked');
-    $('chatInput').focus();
-    $('dialogueMain').textContent = '我在听，你可以直接问我现在宿舍适不适合休息。';
-    $('dialogueSub').textContent = lastState?.companion?.detail || '我会把实时传感器数据一起考虑进去。';
-});
 window.addEventListener('resize', drawTrend);
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape') closeDrawer();
@@ -1396,6 +1407,27 @@ function renderMemory(facts) {
         return;
     }
     list.innerHTML = facts.map(f => `<div class="memory-item">${escapeHtml(f)}</div>`).join('');
+}
+
+function renderConversation(conversation) {
+    $('convCount').textContent = `${conversation.length} 条`;
+    const list = $('convList');
+    if (!conversation.length) {
+        list.innerHTML = '<div class="alert-item">还没有对话记录，先和软眠眠聊聊天吧。</div>';
+        return;
+    }
+    // Show last 20, newest first
+    const items = [...conversation].slice(-20).reverse();
+    list.innerHTML = items.map(item => {
+        const role = item.role === 'assistant' ? 'assistant' : 'user';
+        const label = role === 'assistant' ? '软眠眠' : '你';
+        const time = item.time || '';
+        return `<div class="conv-item ${role}">
+            ${escapeHtml(item.content)}
+            <span class="conv-time">${escapeHtml(label)} · ${escapeHtml(time)}</span>
+        </div>`;
+    }).join('');
+    list.scrollTop = list.scrollHeight;
 }
 
 // Fetch memory when drawer opens + every 30s
