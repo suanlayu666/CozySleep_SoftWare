@@ -41,7 +41,7 @@ from backend.brain import (
     init_brain,
 )
 from backend.serial_io import (
-    process_frame, serial_reader, mock_reader,
+    process_frame, serial_reader, mock_reader, bluetooth_reader,
     append_log, set_serial_state, is_online, now_str,
 )
 
@@ -364,6 +364,12 @@ if __name__ == "__main__":
     target = mock_reader if MOCK_SERIAL else serial_reader
     t = threading.Thread(target=target, daemon=True)
     t.start()
+
+    # Start Bluetooth reader if configured
+    from backend.config import BT_PORT
+    if BT_PORT and not MOCK_SERIAL:
+        bt = threading.Thread(target=bluetooth_reader, daemon=True)
+        bt.start()
 
     # Init brain with AI provider if configured
     if AI_API_BASE and AI_API_KEY:

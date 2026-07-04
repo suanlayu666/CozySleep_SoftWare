@@ -5,7 +5,7 @@ import time
 
 import serial
 
-from backend.config import SERIAL_PORT, BAUD_RATE, DEVICE_TIMEOUT, MOCK_SERIAL
+from backend.config import SERIAL_PORT, BT_PORT, BAUD_RATE, DEVICE_TIMEOUT, MOCK_SERIAL
 from backend import state as st
 from backend.parser import parse_line
 
@@ -151,3 +151,37 @@ def mock_reader():
         process_frame(frame)
         idx += 1
         time.sleep(2)
+
+
+def bluetooth_reader():
+    """Continuously read STM32 frames from the JDY-31 Bluetooth COM port."""
+    if not BT_PORT:
+        print("[蓝牙] 未配置 BT_PORT，跳过蓝牙读取")
+        return
+
+    print(f"[蓝牙] 尝试连接蓝牙 {BT_PORT}@{BAUD_RATE} ...")
+    bt_ser = None
+    while True:
+        try:
+            if bt_ser is None or not bt_ser.is_open:
+                bt_ser = serial.Serial(BT_PORT, BAUD_RATE, timeout=1)
+                append_log("INFO", "", f"蓝牙已连接 {BT_PORT}@{BAUD_RATE}")
+                print(f"[蓝牙] 已连接 {BT_PORT}@{BAUD_RATE}")
+
+            raw = bt_ser.readline()
+            if not raw:
+                continue
+
+            line = raw.decode("utf-8", errors="ignore").strip()
+            if line:
+                process_frame(line)
+        except Exception as exc:
+            err = str(exc)
+            print(f"[蓝牙] 读取错误: {err}")
+            try:
+                if bt_ser and bt_ser.is_open:
+                    bt_ser.close()
+            except Exception:
+                pass
+            bt_ser = None
+            time.sleep(3)

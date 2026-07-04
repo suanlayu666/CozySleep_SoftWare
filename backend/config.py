@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SERIAL_PORT = os.getenv("SERIAL_PORT", "COM3")
+BT_PORT = os.getenv("BT_PORT", "")
 BAUD_RATE = int(os.getenv("BAUD_RATE", "115200"))
 DEVICE_TIMEOUT = int(os.getenv("DEVICE_TIMEOUT", "10"))
 APP_PORT = int(os.getenv("APP_PORT", "5000"))
