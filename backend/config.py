@@ -16,3 +16,9 @@ AI_API_BASE = os.getenv("AI_API_BASE", "")
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_MODEL = os.getenv("AI_MODEL", "deepseek-chat")
 COMPANION_AI_INTERVAL = int(os.getenv("COMPANION_AI_INTERVAL", "35"))
+
+TTS_API_KEY = os.getenv("TTS_API_KEY", "")
+TTS_APP_ID = os.getenv("TTS_APP_ID", "")
+TTS_ACCESS_TOKEN = os.getenv("TTS_ACCESS_TOKEN", "")
+TTS_VOICE_TYPE = os.getenv("TTS_VOICE_TYPE", "BV405_streaming")
+TTS_ENABLED = os.getenv("TTS_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}

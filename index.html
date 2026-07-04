@@ -414,7 +414,7 @@
         .chat-form {
             margin-top: 8px;
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 38px;
+            grid-template-columns: 38px minmax(0, 1fr) 38px;
             gap: 6px;
         }
 
@@ -447,6 +447,33 @@
             font-size: 1rem;
             font-weight: 900;
             box-shadow: 0 6px 16px rgba(223,170,148,0.28);
+        }
+
+        .mic-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.7);
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .mic-btn:hover {
+            background: var(--sky-soft);
+            border-color: rgba(123,159,189,0.4);
+        }
+
+        .mic-btn.listening {
+            background: var(--red-soft);
+            border-color: var(--red);
+            animation: micPulse 0.8s ease-in-out infinite;
+        }
+
+        @keyframes micPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
         }
 
         .send-btn:disabled {
@@ -825,7 +852,8 @@
                     <div class="chat-divider"><span>和软眠眠的对话</span></div>
                     <div class="chat-feed" id="chatFeed"></div>
                     <form class="chat-form" id="chatForm">
-                        <input class="chat-input" id="chatInput" type="text" autocomplete="off" placeholder="直接和我说，比如：现在适合睡觉吗？">
+                        <button class="mic-btn" id="micBtn" type="button" aria-label="语音输入" title="按住说话">🎤</button>
+                        <input class="chat-input" id="chatInput" type="text" autocomplete="off" placeholder="打字或按话筒说话…">
                         <button class="send-btn" id="sendBtn" type="submit" aria-label="发送消息">➜</button>
                     </form>
                 </div>
@@ -1335,6 +1363,117 @@ async function refreshData() {
     }
 }
 
+// ── Voice STT (Web Speech API) ──
+let recognition = null;
+let isListening = false;
+
+function initRecognition() {
+    if (recognition) return recognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert('你的浏览器不支持语音识别，请使用 Chrome。');
+        return null;
+    }
+    recognition = new SpeechRecognition();
+    recognition.lang = 'zh-CN';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.continuous = false;
+
+    recognition.onresult = function (event) {
+        const text = event.results[0][0].transcript.trim();
+        if (text) {
+            $('chatInput').value = text;
+            $('chatInput').focus();
+            // Auto-send after short pause
+            setTimeout(() => {
+                if ($('chatInput').value === text && text.length > 0) {
+                    sendChat(new Event('submit'));
+                }
+            }, 600);
+        }
+    };
+
+    recognition.onerror = function (event) {
+        console.warn('STT error:', event.error);
+        stopListening();
+    };
+
+    recognition.onend = function () {
+        stopListening();
+    };
+
+    return recognition;
+}
+
+function startListening() {
+    const rec = initRecognition();
+    if (!rec) return;
+    try {
+        rec.start();
+        isListening = true;
+        $('micBtn').classList.add('listening');
+        $('micBtn').textContent = '🔴';
+    } catch (e) {
+        console.warn('STT start error:', e);
+    }
+}
+
+function stopListening() {
+    isListening = false;
+    $('micBtn').classList.remove('listening');
+    $('micBtn').textContent = '🎤';
+}
+
+$('micBtn').addEventListener('mousedown', startListening);
+$('micBtn').addEventListener('mouseup', stopListening);
+$('micBtn').addEventListener('mouseleave', stopListening);
+
+// Touch support
+$('micBtn').addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
+$('micBtn').addEventListener('touchend', stopListening);
+
+// ── Voice TTS playback ──
+let audioEl = null;
+
+async function speakText(text) {
+    if (!text || text.length < 2) return;
+    try {
+        // Show speaking state
+        const companion = $('companion');
+        companion.classList.add('speaking');
+
+        const resp = await fetch(`${API_BASE}/tts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text }),
+        });
+        if (!resp.ok) {
+            // TTS not configured or failed — silently skip
+            companion.classList.remove('speaking');
+            return;
+        }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+
+        if (audioEl) {
+            audioEl.pause();
+            URL.revokeObjectURL(audioEl.src);
+        }
+        audioEl = new Audio(url);
+        audioEl.onended = () => {
+            companion.classList.remove('speaking');
+        };
+        audioEl.onerror = () => {
+            companion.classList.remove('speaking');
+        };
+        await audioEl.play();
+    } catch (e) {
+        $('companion').classList.remove('speaking');
+        // TTS is optional — fail silently
+    }
+}
+
 async function sendChat(event) {
     event.preventDefault();
     if (chatBusy) return;
@@ -1367,6 +1506,10 @@ async function sendChat(event) {
             ? '这是我结合当前传感器数据生成的回答。'
             : '这是我根据本地环境规则给出的回答。';
         setPill($('sourcePill'), result.source === 'ai' ? 'ok' : 'normal', result.source === 'ai' ? 'AI 生成' : '本地规则');
+
+        // Speak the reply with TTS
+        if (result.source === 'ai') speakText(result.reply);
+
     } catch (err) {
         const fallback = `我刚才没能把这句话处理好：${err.message}`;
         appendChatMessage('assistant', fallback);

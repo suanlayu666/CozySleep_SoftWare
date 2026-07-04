@@ -313,6 +313,33 @@ def memory_facts():
     return jsonify({"count": len(facts), "facts": facts})
 
 
+@app.route("/api/tts", methods=["POST"])
+def tts_speak():
+    """Convert text to speech, return MP3 audio."""
+    from backend.config import TTS_API_KEY, TTS_APP_ID, TTS_ACCESS_TOKEN, TTS_VOICE_TYPE, TTS_ENABLED
+    if not TTS_ENABLED or not TTS_API_KEY:
+        return jsonify({"ok": False, "error": "TTS not configured"}), 503
+
+    payload = request.get_json(silent=True) or {}
+    text = str(payload.get("text", "")).strip()
+    if not text:
+        return jsonify({"ok": False, "error": "empty text"}), 400
+
+    try:
+        from backend.tts_provider import VolcanoTTS, TTSError
+        tts = VolcanoTTS(
+            api_key=TTS_API_KEY,
+            app_id=TTS_APP_ID,
+            access_token=TTS_ACCESS_TOKEN,
+            voice_type=TTS_VOICE_TYPE,
+        )
+        audio = tts.synthesize(text)
+        return Response(audio, mimetype="audio/mpeg")
+    except TTSError as exc:
+        print(f"[TTS] Error: {exc}")
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
 @app.route("/api/memory/reset", methods=["POST"])
 def memory_reset():
     from backend.memory import get_user_facts, delete_user_fact
