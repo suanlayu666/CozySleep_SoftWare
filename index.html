@@ -811,7 +811,27 @@
         }
 
         .chart-wrap {
-            height: 190px;
+            height: 170px;
+        }
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+            font-size: 0.72rem;
+            font-weight: 750;
+            color: var(--muted);
+        }
+        .chart-legend span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .chart-legend .dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
         }
 
         #trendCanvas {
@@ -1080,7 +1100,7 @@
                         <article class="metric-card" id="card-mq135_adc">
                             <div class="metric-top"><span class="metric-name">空气质量</span><span class="pill missing" id="status-mq135_adc">--</span></div>
                             <div class="metric-value"><span id="value-mq135_adc">--</span> ADC</div>
-                            <div class="metric-detail" id="detail-mq135_adc">MQ135 数值越小空气质量越差</div>
+                            <div class="metric-detail" id="detail-mq135_adc">数值越高空气越好，越低越差</div>
                         </article>
                         <article class="metric-card" id="card-mq135_mv">
                             <div class="metric-top"><span class="metric-name">MQ135 电压</span><span class="pill missing" id="status-mq135_mv">--</span></div>
@@ -1144,6 +1164,7 @@
                 </div>
                 <div class="panel-body">
                     <div class="chart-wrap"><canvas id="trendCanvas"></canvas></div>
+                    <div class="chart-legend" id="chartLegend"></div>
                 </div>
             </section>
 
@@ -1225,10 +1246,10 @@ const API_BASE = location.protocol.startsWith('http')
 
 const metricFields = ['temperature', 'humidity', 'mq135_adc', 'mq135_mv', 'motion', 'sound_db'];
 const trendSeries = [
-    { field: 'temperature', color: '#d96f5c' },
-    { field: 'humidity', color: '#7b9fbd' },
-    { field: 'sound_db', color: '#ad7a27' },
-    { field: 'mq135_adc', color: '#6f9b82' },
+    { field: 'temperature', color: '#d96f5c', label: '温度' },
+    { field: 'humidity', color: '#7b9fbd', label: '湿度' },
+    { field: 'sound_db', color: '#ad7a27', label: '声音' },
+    { field: 'mq135_adc', color: '#6f9b82', label: '空气(越高越好)' },
 ];
 
 let lastTimestamp = null;
@@ -1557,6 +1578,11 @@ function drawTrend() {
     const { ctx, width, height } = resizeCanvas(canvas);
     ctx.clearRect(0, 0, width, height);
 
+    // Render legend
+    $('chartLegend').innerHTML = trendSeries.map(s =>
+        `<span><i class="dot" style="background:${s.color}"></i>${s.label}</span>`
+    ).join('');
+
     const pad = { left: 26, right: 12, top: 14, bottom: 24 };
     const innerW = width - pad.left - pad.right;
     const innerH = height - pad.top - pad.bottom;
@@ -1681,12 +1707,13 @@ function initRecognition() {
 
 function startListening() {
     const rec = initRecognition();
-    if (!rec) return;
+    if (!rec) { console.warn('STT: SpeechRecognition not available'); return; }
     try {
         rec.start();
         isListening = true;
         $('micBtn').classList.add('listening');
         $('micBtn').classList.add('recording');
+        console.log('STT: started');
     } catch (e) { console.warn('STT start:', e); }
 }
 
@@ -1694,6 +1721,10 @@ function stopListening() {
     isListening = false;
     $('micBtn').classList.remove('listening');
     $('micBtn').classList.remove('recording');
+    if (recognition) {
+        try { recognition.stop(); } catch (e) {}
+    }
+    console.log('STT: stopped');
 }
 
 $('micBtn').addEventListener('mousedown', startListening);
