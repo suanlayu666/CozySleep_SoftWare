@@ -4,6 +4,7 @@ import json
 import time
 
 import serial
+from serial.tools import list_ports
 
 from backend.config import SERIAL_PORT, BT_PORT, BAUD_RATE, DEVICE_TIMEOUT, MOCK_SERIAL
 from backend import state as st
@@ -95,31 +96,98 @@ def process_frame(line):
 
 
 # ==================== Serial readers ====================
+def _candidate_ports():
+    """Try the last configured port first, then USB ports, then other ports."""
+    ports = [port for port in list_ports.comports() if port.device != BT_PORT]
+
+    def priority(port):
+        if port.device == SERIAL_PORT:
+            return (0, port.device)
+        description = (port.description or "").lower()
+        is_usb = port.vid is not None or "usb" in description
+        return (1 if is_usb else 2, port.device)
+
+    return [port.device for port in sorted(ports, key=priority)]
+
+
+def _is_device_frame(parsed):
+    data = parsed.get("data_update", {})
+    return (parsed.get("ok") and parsed.get("source") == "json"
+            and "mq135_adc" in data and "sound_db" in data)
+
+
+def _probe_port(port_name, probe_seconds=6):
+    """Only claim a port after it sends a recognizable device sensor frame."""
+    connection = serial.Serial(port_name, BAUD_RATE, timeout=0.5)
+    deadline = time.monotonic() + probe_seconds
+    try:
+        while time.monotonic() < deadline:
+            raw = connection.readline()
+            if not raw:
+                continue
+            line = raw.decode("utf-8", errors="ignore").strip()
+            if line and _is_device_frame(parse_line(line)):
+                return connection, line
+    except Exception:
+        connection.close()
+        raise
+    connection.close()
+    return None, None
+
+
 def serial_reader():
-    """Continuously read STM32 frames from the configured serial port."""
-    print(f"[串口] 尝试连接 {SERIAL_PORT}@{BAUD_RATE} ...")
+    """Discover the sensor port and rediscover it after disconnects."""
+    print(f"[串口] 自动寻找设备，波特率 {BAUD_RATE} ...")
+    last_valid_at = 0.0
     while True:
-        try:
-            if st.ser is None or not st.ser.is_open:
-                st.ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+        if st.ser is None:
+            set_serial_state(connected=False, port=None)
+            try:
+                candidates = _candidate_ports()
+            except Exception as exc:
+                candidates = []
+                set_serial_state(last_error=f"枚举串口失败: {exc}")
+
+            for port_name in candidates:
+                try:
+                    connection, first_line = _probe_port(port_name)
+                except (OSError, serial.SerialException) as exc:
+                    print(f"[串口] 跳过 {port_name}: {exc}")
+                    continue
+                if connection is None:
+                    continue
+
+                st.ser = connection
+                last_valid_at = time.monotonic()
                 set_serial_state(
                     connected=True,
+                    port=port_name,
                     last_error="",
                     last_open_time=now_str(),
                 )
                 with st.state_lock:
                     st.stats["serial_reconnects"] += 1
-                append_log("INFO", "", f"串口已连接 {SERIAL_PORT}@{BAUD_RATE}")
-                print(f"[串口] 已连接 {SERIAL_PORT}@{BAUD_RATE}")
+                append_log("INFO", "", f"自动识别设备串口 {port_name}@{BAUD_RATE}")
+                print(f"[串口] 已识别设备: {port_name}@{BAUD_RATE}")
+                process_frame(first_line)
+                break
 
-            raw = st.ser.readline()
-            if not raw:
+            if st.ser is None:
+                set_serial_state(last_error="未找到发送有效传感器数据的串口")
+                time.sleep(3)
                 continue
 
-            line = raw.decode("utf-8", errors="ignore").strip()
-            if line:
-                process_frame(line)
-        except Exception as exc:
+        try:
+            raw = st.ser.readline()
+            if raw:
+                line = raw.decode("utf-8", errors="ignore").strip()
+                if line:
+                    parsed = process_frame(line)
+                    if _is_device_frame(parsed):
+                        last_valid_at = time.monotonic()
+            if time.monotonic() - last_valid_at > 12:
+                raise TimeoutError("设备数据中断，重新寻找串口")
+        except (OSError, serial.SerialException, TimeoutError) as exc:
             err = str(exc)
             print(f"[串口] 读取错误: {err}")
             append_log("ERROR", "", f"串口错误: {err}")

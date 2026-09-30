@@ -1107,11 +1107,6 @@
                             <div class="metric-value"><span id="value-mq135_mv">--</span> mV</div>
                             <div class="metric-detail" id="detail-mq135_mv">等待数据</div>
                         </article>
-                        <article class="metric-card" id="card-motion">
-                            <div class="metric-top"><span class="metric-name">人体检测</span><span class="pill missing" id="status-motion">--</span></div>
-                            <div class="metric-value"><span id="value-motion">--</span></div>
-                            <div class="metric-detail" id="detail-motion">1 有人 / 0 无人</div>
-                        </article>
                         <article class="metric-card" id="card-sound_db">
                             <div class="metric-top"><span class="metric-name">声音分贝</span><span class="pill missing" id="status-sound_db">--</span></div>
                             <div class="metric-value"><span id="value-sound_db">--</span> dB</div>
@@ -1244,7 +1239,7 @@ const API_BASE = location.protocol.startsWith('http')
     ? `${location.origin}/api`
     : 'http://localhost:5000/api';
 
-const metricFields = ['temperature', 'humidity', 'mq135_adc', 'mq135_mv', 'motion', 'sound_db'];
+const metricFields = ['temperature', 'humidity', 'mq135_adc', 'mq135_mv', 'sound_db'];
 const trendSeries = [
     { field: 'temperature', color: '#d96f5c', label: '温度' },
     { field: 'humidity', color: '#7b9fbd', label: '湿度' },
@@ -1278,7 +1273,6 @@ function setPill(el, level, text) {
 
 function formatValue(field, value, withUnit = false) {
     if (value === null || value === undefined) return '--';
-    if (field === 'motion') return Number(value) === 1 ? '有人' : '无人';
 
     const units = {
         temperature: '°C',

@@ -36,6 +36,15 @@ class TestParseGolden:
         assert r["missing_fields"] == []
         assert r["errors"] == []
 
+    def test_esp32_frame_without_motion_sensor(self):
+        line = '{"temp":26,"humi":61,"mq135_adc":20,"mq135_mv":18,"motion":null,"sound_db":46,"bh1750_ok":true,"lux":71.7}'
+        r = normalize(parser.parse_line(line))
+        assert r["ok"] is True
+        assert r["complete"] is True
+        assert r["data_update"]["motion"] is None
+        assert r["missing_fields"] == []
+        assert r["errors"] == []
+
     def test_json_dht11_error_frame(self):
         """DHT11 failed — sensors report an error field, partial data still parsed."""
         line = '{"error":"DHT11_Failed","mq135_adc":2886,"motion":1,"sound_db":48}'

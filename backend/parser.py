@@ -52,6 +52,11 @@ def _parse_json_frame(line):
             continue
 
         raw_values[field] = raw
+        if field == "motion" and raw is None:
+            # Current ESP32 firmware has no motion sensor. Its explicit null
+            # means unavailable, not a malformed sensor frame.
+            data_update[field] = None
+            continue
         try:
             value = _coerce_field(field, raw)
             _validate_range(field, value)
